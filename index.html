@@ -11,16 +11,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;0,7..72,800;1,7..72,400&display=swap" rel="stylesheet">
 <style>/* ===== tokens ===== */
 :root{
-  --bg:#EDF1F4;--surface:#FFFFFF;--ink:#1B2A41;--muted:#5B6B80;--mark:#F5CF55;--mark-ink:#1B2A41;
-  --accent:#2F6F6A;--line:#D3DBE3;--id:#C8443A;--en:#2F64B5;
+  --bg:#EEF2F7;--surface:#FFFFFF;--ink:#0F2547;--muted:#5B6B80;--mark:#F5CF55;--mark-ink:#1B2A41;
+  --accent:#1E4C8F;--sky:#7FB3DD;--sky-soft:#D6E6F5;--line:#D3DBE6;--id:#C93A32;--en:#2F64B5;
   --read:"Literata",Georgia,"Times New Roman",serif;
   --ui:"Atkinson Hyperlegible",system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
   --fs:1.15rem;color-scheme:light;box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#10161F;--surface:#18212D;--ink:#E4E9F0;--muted:#93A1B3;--mark:#6E5512;--mark-ink:#FFF4D2;--accent:#6FC3B8;--line:#2A3646;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#10161F;--surface:#18212D;--ink:#E4E9F0;--muted:#93A1B3;--mark:#6E5512;--mark-ink:#FFF4D2;--accent:#6FC3B8;--line:#2A3646;color-scheme:dark}
+  --bg:#10161F;--surface:#18212D;--ink:#E4E9F0;--muted:#93A1B3;--mark:#6E5512;--mark-ink:#FFF4D2;--accent:#7FB3DD;--sky:#4F86C2;--sky-soft:#243A57;--line:#2A3646;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#10161F;--surface:#18212D;--ink:#E4E9F0;--muted:#93A1B3;--mark:#6E5512;--mark-ink:#FFF4D2;--accent:#7FB3DD;--sky:#4F86C2;--sky-soft:#243A57;--line:#2A3646;color-scheme:dark}
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + var(--hh,104px))}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--ui);-webkit-text-size-adjust:100%}
@@ -245,17 +245,17 @@ body[data-hl="color"] .s.cur{background:none;box-shadow:none;color:var(--accent)
 .cchart{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:.7rem .7rem .3rem}
 .cchart figcaption{font-size:.82rem;font-weight:700;margin-bottom:.2rem}
 .cchart svg{display:block;width:100%;height:auto}
-.cchart .b{fill:var(--accent)}.cchart .b.neg{fill:var(--id)}.cchart .b.part{fill:var(--accent);opacity:.45}
+.cchart .b{fill:var(--accent)}.cchart .b.neg{fill:var(--id)}.cchart .b.part{fill:var(--sky)}
 .cchart text{font-family:var(--ui);font-size:11px;text-anchor:middle;fill:var(--muted)}
 .cchart text.v{fill:var(--ink);font-weight:700}
 .cchart text.nv{fill:var(--id)}
 .cchart .z{stroke:var(--line);stroke-width:1}
-.cnest .bo{fill:var(--accent);opacity:.28}.cnest .b{fill:var(--accent)}
+.cnest .bo{fill:var(--sky-soft)}.cnest .b{fill:var(--accent)}
 .cnest text.iv{fill:var(--accent);font-size:9px;font-weight:700}.cnest text.pct{fill:var(--accent);font-size:8.5px}
 .cnest .lg text{text-anchor:start;font-size:10.5px;fill:var(--ink)}
 .cline .grid{stroke:var(--line);stroke-width:1}
 .cline path{fill:none;stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round}
-.cline .c0{stroke:var(--accent);fill:var(--accent)}.cline .c1{stroke:var(--accent);fill:var(--accent)}.cline .cr{stroke:var(--id);fill:var(--id)}
+.cline .c0{stroke:var(--accent);fill:var(--accent)}.cline .c1{stroke:var(--sky);fill:var(--sky)}.cline .cr{stroke:var(--id);fill:var(--id)}
 .cline path.c0,.cline path.c1,.cline path.cr{fill:none}.cline path.dash{stroke-dasharray:4 3;opacity:.75}
 .cline circle.c1{opacity:.75}
 .cline text.ax{font-size:9.5px}.cline text.ax.l{text-anchor:end;fill:var(--muted)}.cline text.ax.r{text-anchor:start;fill:var(--id)}
