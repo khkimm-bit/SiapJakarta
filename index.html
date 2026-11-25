@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 듣고 읽는 서재 · 독립 실행형. 원문은 Project Gutenberg의 퍼블릭 도메인 도서입니다. -->
+<!-- Siap Jakarta · 독립 실행형. 서재의 원문은 Project Gutenberg의 퍼블릭 도메인 도서입니다. -->
 
 <html lang="ko">
 <head>
@@ -786,10 +786,20 @@ function say(text,o){
     if(v){u.voice=v;u.lang=v.lang}else u.lang=lg==='id'?'id-ID':'en-US';
     u.rate=rate;if(o.alt&&voicesFor(lg).length<2)u.pitch=1.25;
     u.onend=()=>res();u.onerror=e=>rej({code:e.error||'error'});
-    synth.speak(u);
+    // some engines (iOS/macOS Safari, Android Chrome) misplay an utterance started right after cancel(),
+    // e.g. far too fast, so wait until the cancel has settled; a newer hush() drops this start
+    const g=sayGen,wait=Math.max(0,HUSH_SETTLE-(Date.now()-lastHush));
+    const go=()=>{if(g!==sayGen)return rej({code:'interrupted'});
+      if(synth.speaking||synth.pending){synth.cancel();lastHush=Date.now();return setTimeout(go,HUSH_SETTLE)}
+      synth.speak(u)};
+    if(wait)setTimeout(go,wait);else go();
   });
 }
-function hush(){if(synth)synth.cancel();if(cTTS)try{cTTS.stop()}catch(e){}}
+let sayGen=0,lastHush=0;const HUSH_SETTLE=150;
+/* stop all speech; keepClaude: a Claude speak() follows at once and replaces the reading itself,
+   so skip stop(), whose late answer could end the new reading */
+function hush(keepClaude){sayGen++;if(synth){const busy=synth.speaking||synth.pending;synth.cancel();if(busy)lastHush=Date.now()}
+  if(cTTS&&!keepClaude)try{cTTS.stop().catch(()=>{})}catch(e){}}
 /* one-off: a word or phrase the viewer tapped */
 function sayOnce(text,lg){stopReading();dlgStop();say(text,{lang:lg,rate:S.settings.brate}).catch(()=>{})}
 
@@ -818,6 +828,9 @@ function loadBundle(b,n){
    ========================================================= */
 let items=[],idx=0,playing=false,repeat=false,tok=0;
 const SPEEDS=[0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.15];
+const CSPEEDS=[0.7,0.8,0.9,1.0,1.15];   // Claude voice: the platform keeps the pace within 0.7–1.5
+const speedList=()=>useClaude()?CSPEEDS:SPEEDS;
+const effRate=r=>useClaude()?Math.max(0.7,Math.min(1.5,r)):r;   // the pace actually heard
 function srcTexts(c){const a=[];for(const b of c.b){if(b.t==='p')b.s.forEach(s=>a.push(clean(s)));else if(b.t==='pre'&&b.sp)a.push(clean(b.x))}return a}
 function variant(){return S.settings.idl==='easy'?'ide':'id'}
 
@@ -915,7 +928,7 @@ function mark(scroll){
 function setPlayIcon(){$('playIcon').innerHTML=playing?'<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>':'<path d="M8 5v14l11-7z"/>';$('play').setAttribute('aria-label',playing?'일시정지':'재생')}
 async function speakAt(i){
   if(!items.length)return;
-  const my=++tok;hush();idx=i;mark(true);
+  const my=++tok;hush(useClaude());idx=i;mark(true);
   try{await say(items[i].text,{lang:readLang()})}
   catch(e){if(my!==tok)return;
     if(e&&e.code==='not_granted')return speakAt(i);
@@ -947,7 +960,11 @@ $('rep').onclick=()=>{repeat=!repeat;$('rep').classList.toggle('on',repeat);$('r
 $('auto').onclick=()=>{setSetting('auto',S.settings.auto?0:1);$('status').textContent=S.settings.auto?'자동 멈춤 켜짐 · 한 문장씩 읽고 멈춰요':'자동 멈춤 꺼짐 · 이어서 읽어요'};
 const BSPEEDS=[0.5,0.6,0.7,0.8,0.9,1.0];
 document.querySelectorAll('.bspd').forEach(b=>{b.onclick=()=>{const k=BSPEEDS.indexOf(S.settings.brate);setSetting('brate',BSPEEDS[(k+1)%BSPEEDS.length]);sayOnce(b.dataset.sample||'Selamat pagi','id')}});
-$('spd').onclick=()=>{const k=SPEEDS.indexOf(S.settings.rate);setSetting('rate',SPEEDS[(k+1)%SPEEDS.length]);if(playing)speakAt(idx)};
+let spdTimer=null;
+$('spd').onclick=()=>{const L=speedList(),k=L.indexOf(effRate(S.settings.rate));setSetting('rate',L[(k+1)%L.length]);
+  if(!playing)return;clearTimeout(spdTimer);
+  if(useClaude()&&cTTS.setRate){try{cTTS.setRate(effRate(S.settings.rate))}catch(e){}return}
+  spdTimer=setTimeout(()=>{if(playing)speakAt(idx)},400)};   // several quick taps → one restart
 let tapTimer=null;
 function onSentenceTap(e){
   const s=e.target.closest('.s');if(!s||(getSelection()+'').trim()||e.detail>1)return;
@@ -1612,7 +1629,7 @@ function applySettings(){
   const st=S.settings,root=document.documentElement;
   if(st.theme==='auto')root.removeAttribute('data-theme');else root.setAttribute('data-theme',st.theme);
   root.style.setProperty('--fs',st.fs);document.body.dataset.hl=st.hl;applyHide();
-  $('spd').textContent=(Number.isInteger(st.rate)?st.rate.toFixed(1):String(st.rate))+'×';
+  {const r=effRate(st.rate);$('spd').textContent=(Number.isInteger(r)?r.toFixed(1):String(r))+'×'}
   document.querySelectorAll('.bspd').forEach(b=>{b.textContent='🔈 '+(Number.isInteger(st.brate)?st.brate.toFixed(1):String(st.brate))+'×'});
   $('auto').classList.toggle('on',!!st.auto);$('auto').setAttribute('aria-pressed',String(!!st.auto));
   document.querySelectorAll('[data-only="id"]').forEach(f=>f.hidden=st.lang!=='id');
