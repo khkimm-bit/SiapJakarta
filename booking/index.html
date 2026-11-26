@@ -145,6 +145,7 @@ fieldset:disabled{opacity:.55}
 .cards{display:flex;flex-direction:column;gap:6px;margin-top:6px}
 .card{display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 8px 7px 10px;border:1px solid var(--line);border-left:4px solid var(--time);border-radius:10px;background:var(--surface)}
 .card.day{border-left-color:var(--day)}
+.card.pending{opacity:.65}
 .card.air{border-left-color:var(--air)}
 .when{display:flex;flex-direction:column;font-variant-numeric:tabular-nums}
 .when b{font-size:.9rem;font-weight:700}
@@ -470,6 +471,15 @@ fieldset:disabled{opacity:.55}
     catch(e){ $('toast').hidden=true; if (e.auth) showLogin(e.message); else notify(errText(e), 4500); return false; }
   }
 
+  // Booking changes are shown at once and saved in the background (optimistic update).
+  // Server data is applied only when no other change is still in flight, so it can't overwrite a newer local edit.
+  let pending=0;
+  async function mutate(fn, args){
+    pending++;
+    try { const data=await api(fn, ...args); pending--; if (!pending) apply(data); }
+    catch(e){ pending--; if (!pending) refresh(); throw e; }
+  }
+
   /* ===== Navigation ===== */
   function go(next){
     view=next;
@@ -566,18 +576,30 @@ fieldset:disabled{opacity:.55}
     else if (type==='time'){ b.start=toMin($('tStart').value); b.end=toMin($('tEnd').value); }
     else { b.start=0; b.end=1440; }
     if (b.end <= b.start) return showMsg('종료 시각이 시작 시각보다 뒤여야 합니다.','err');
+    if (!dOk(b.driverId,date)) return showMsg('선택한 기사는 이 날짜에 배차할 수 없습니다.','err');
+    if (!vOk(b.vehicleId,date)) return showMsg('선택한 차량은 이 날짜에 배차할 수 없습니다.','err');
+    const clash=bookings.find(x => x.id!==editingId && x.date===date &&
+      (x.vehicleId===b.vehicleId || x.driverId===b.driverId) && x.start < b.end && b.start < x.end);
+    if (clash){
+      const who = clash.vehicleId===b.vehicleId ? `차량 ${vById(b.vehicleId)?.plate||''}` : `기사 ${dById(b.driverId)?.name||''}`;
+      return showMsg(`${who}은(는) 이미 ${timeText(clash)}에 배차되어 있습니다. 시간이나 배정을 바꿔 주세요.`,'err');
+    }
 
-    const wasEdit=!!editingId;
-    $('submitBtn').disabled=true; showMsg('저장 중…','ok');
-    try {
-      apply(await api('saveBooking', b));
-      $('msg').className='msg';
-      resetEdit();
-      $('boardDate').value=date; renderBoard();
-      notify(wasEdit ? '배차를 수정했습니다.' : '배차를 등록했습니다.');
-      if (!matchMedia('(min-width:900px)').matches) go('board');
-    } catch(err){ if (err.auth) showLogin(err.message); else showMsg(errText(err),'err'); }
-    finally { $('submitBtn').disabled=false; }
+    // Show it right away, then save.
+    const wasEdit=!!editingId, before=bookings.slice();
+    const local={...b, id: editingId || 'tmp-'+Date.now(), _pending:true};
+    bookings = wasEdit ? bookings.map(x => x.id===editingId ? {...x, ...local} : x) : bookings.concat(local);
+    resetEdit();
+    $('boardDate').value=date; renderBoard();
+    notify(wasEdit ? '배차를 수정했습니다.' : '배차를 등록했습니다.');
+    if (!matchMedia('(min-width:900px)').matches) go('board');
+    try { await mutate('saveBooking', [b]); }
+    catch(err){
+      // Undo and put the entry back in the form so nothing has to be retyped.
+      bookings=before; renderBoard();
+      if (err.auth) return showLogin(err.message);
+      fillForm(b, wasEdit); go('book'); showMsg(errText(err),'err');
+    }
   });
 
   function resetEdit(){
@@ -589,8 +611,11 @@ fieldset:disabled{opacity:.55}
   $('cancelEdit').addEventListener('click', resetEdit);
 
   function startEdit(id){
-    const b=bookings.find(x => x.id===id); if (!b || !canModify(b)) return;
-    editingId=id;
+    const b=bookings.find(x => x.id===id); if (!b || b._pending || !canModify(b)) return;
+    fillForm(b, true);
+  }
+  function fillForm(b, isEdit){
+    editingId = isEdit ? b.id : null;
     $('fDate').value=b.date; fillSelects();
     $('fRequester').value=uById(b.requesterId) ? b.requesterId : '';
     $('fDriver').value=b.driverId; $('fVehicle').value=b.vehicleId;
@@ -598,14 +623,20 @@ fieldset:disabled{opacity:.55}
     if (b.type==='air'){ setTime('aTime',fromMin(b.start)); $('aHours').value=(b.end-b.start)/60; $('aFlight').value=b.flight||''; }
     if (b.type==='time'){ setTime('tStart',fromMin(b.start)); setTime('tEnd',fromMin(b.end)); }
     $('fPurpose').value=b.purpose||'';
-    $('formTitle').textContent='배차 수정'; $('submitBtn').textContent='수정 저장';
-    $('cancelEdit').hidden=false; $('msg').className='msg';
+    $('formTitle').textContent = isEdit ? '배차 수정' : '새 배차 등록';
+    $('submitBtn').textContent = isEdit ? '수정 저장' : '배차 등록';
+    $('cancelEdit').hidden=!isEdit; $('msg').className='msg';
     go('book');
   }
 
   async function removeBooking(id){
     if (!(await askConfirm('이 배차를 삭제할까요?','삭제'))) return;
-    if (await call('deleteBooking', [id], '배차를 삭제했습니다.') && editingId===id) resetEdit();
+    const before=bookings.slice();
+    bookings=bookings.filter(b => b.id!==id); renderBoard();
+    if (editingId===id) resetEdit();
+    notify('배차를 삭제했습니다.');
+    try { await mutate('deleteBooking', [id]); }
+    catch(err){ bookings=before; renderBoard(); if (err.auth) showLogin(err.message); else notify('삭제하지 못했습니다. '+errText(err), 4500); }
   }
 
   /* ===== Board ===== */
@@ -634,6 +665,10 @@ fieldset:disabled{opacity:.55}
       const v=vById(b.vehicleId), d=dById(b.driverId), u=uById(b.requesterId);
       const memo=[b.type==='air' ? b.flight : '', b.purpose].filter(Boolean).join(' · ');
       const when = b.type==='day' ? '<b>종일</b>' : `<b>${fromMin(b.start)}</b><span>~ ${fromMin(b.end)}</span>`;
+      if (b._pending) return `<article class="card ${esc(b.type)} pending">
+        <div class="when">${when}</div>
+        <div class="what"><div class="who">${esc(u ? uLabel(u) : '')} <span class="tag mine">저장 중</span></div>
+          <div class="line">${esc(d ? d.name : '')} · ${v?`<span class="plate">${esc(v.plate)}</span>`:''}</div></div><div></div></article>`;
       return `<article class="card ${esc(b.type)}">
         <div class="when">${when}</div>
         <div class="what">
@@ -652,7 +687,7 @@ fieldset:disabled{opacity:.55}
       const bars=day.filter(b => b.vehicleId===v.id).map(b => {
         const d=dById(b.driverId), u=uById(b.requesterId);
         const title=`${timeText(b)} · ${d?d.name:'-'}${u?' · 사용자 '+u.name:''}${b.purpose?' · '+b.purpose:''}`;
-        return `<button type="button" class="bar ${esc(b.type)}" style="left:${b.start/1440*100}%;width:${(b.end-b.start)/1440*100}%" ${canModify(b)?`data-action="edit" data-id="${esc(b.id)}"`:''} title="${esc(title)}"><b>${esc(d?d.name:'-')}</b>${b.type==='time'?'':' '+typeLabel(b.type)}</button>`;
+        return `<button type="button" class="bar ${esc(b.type)}" style="left:${b.start/1440*100}%;width:${(b.end-b.start)/1440*100}%" ${canModify(b) && !b._pending?`data-action="edit" data-id="${esc(b.id)}"`:''} title="${esc(title)}"><b>${esc(d?d.name:'-')}</b>${b.type==='time'?'':' '+typeLabel(b.type)}</button>`;
       }).join('');
       html+=`<div class="tl-row"><div class="tl-label"><span class="plate">${esc(v.plate)}</span><small>${esc(v.model)}</small></div><div class="tl-track">${bars}</div></div>`;
     });
@@ -780,7 +815,8 @@ fieldset:disabled{opacity:.55}
   }
   async function refresh(){
     if (!code) return showLogin();
-    try { apply(await api('getData')); }
+    if (pending) return;
+    try { const data=await api('getData'); if (!pending) apply(data); }
     catch(e){ if (e.auth) showLogin(e.message); else banner('배차 데이터를 불러오지 못했습니다. ('+errText(e)+')'); }
   }
   // Pick up other people's changes: every minute while open, and whenever the page comes back into view.
