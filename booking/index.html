@@ -41,7 +41,7 @@ h3{margin:0 0 6px;font-size:.92rem;font-weight:700}
 
 /* ===== Header ===== */
 .top{background:var(--header-bg);color:var(--header-ink);padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px;border-bottom:3px solid var(--accent)}
-.top-inner{max-width:1180px;margin:0 auto}
+.top-inner{max-width:1440px;margin:0 auto}
 h1{margin:0;font-size:1.05rem;font-weight:700;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .logo{display:inline-flex;border-radius:7px;flex:none}
 .logo img{width:22px;height:21px;background:#FFFFFF;border-radius:6px;padding:2px;box-sizing:content-box;display:block}
@@ -68,14 +68,14 @@ h1{margin:0;font-size:1.05rem;font-weight:700;letter-spacing:-.02em;display:flex
 .banner{max-width:1180px;margin:12px auto 0;padding:12px 16px;border-radius:10px;background:var(--note-soft);border:1px solid var(--line)}
 
 /* ===== Layout ===== */
-main{max-width:1180px;margin:0 auto;padding:8px 8px 14px}
+main{max-width:1440px;margin:0 auto;padding:8px 8px 14px}
 .view{display:none}
 .view.on{display:block}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
 .panel + .panel{margin-top:8px}
 @media (min-width:900px){
   main{padding:22px 16px 32px}
-  #pair:not(.off){display:grid;grid-template-columns:380px 1fr;gap:22px;align-items:start}
+  #pair:not(.off){display:grid;grid-template-columns:360px minmax(0,1fr);gap:22px;align-items:start}
   #pair:not(.off) > .view{display:block}
   .nav button[data-view="board"]{display:none}
 }
@@ -206,7 +206,32 @@ fieldset:disabled{opacity:.55}
 
 /* Timeline (wide screens only) */
 .wide-only{display:none}
-@media (min-width:900px){ .wide-only{display:block} }
+@media (min-width:900px){ .wide-only{display:block} .narrow-only{display:none!important} }
+
+/* Week grid (wide screens): vehicles down the side, days across */
+.wk-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin-top:10px}
+table.wk{width:100%;min-width:700px;border-collapse:collapse;table-layout:fixed;font-size:.76rem}
+.wk th,.wk td{border-bottom:1px solid var(--line);border-left:1px solid var(--line);padding:4px;vertical-align:top}
+.wk tr:last-child td,.wk tr:last-child th{border-bottom:0}
+.wk thead th{background:var(--bg);font-weight:500;text-align:center;padding:6px 4px;cursor:pointer;white-space:nowrap}
+.wk thead th:hover{color:var(--brand)}
+.wk thead th.today{color:var(--brand);font-weight:700}
+.wk thead th.sun{color:var(--danger)}
+.wk .veh{width:108px;text-align:left;border-left:0;background:var(--surface);position:sticky;left:0;z-index:1;vertical-align:middle}
+.wk thead .veh{background:var(--bg);cursor:default}
+.wk .veh small{display:block;color:var(--muted);font-weight:400;margin-top:2px}
+.wk td.today{background:color-mix(in srgb, var(--time-soft) 55%, transparent)}
+.wk td.off{background-image:repeating-linear-gradient(135deg,var(--line) 0 1px,transparent 1px 7px)}
+.wk td.past{opacity:.55}
+.wk-item{display:block;width:100%;text-align:left;border:0;border-left:3px solid var(--time);background:var(--time-soft);border-radius:5px;padding:3px 5px;margin-bottom:3px;color:var(--ink);cursor:default;font-size:.72rem;line-height:1.35}
+.wk-item:last-child{margin-bottom:0}
+.wk-item[data-action]{cursor:pointer}
+.wk-item[data-action]:hover{filter:brightness(.96)}
+.wk-item.day{border-left-color:var(--day);background:var(--day-soft)}
+.wk-item.air{border-left-color:var(--air);background:var(--air-soft)}
+.wk-item.pending{opacity:.6}
+.wk-item span{display:block;overflow-wrap:anywhere}
+.wk-item .t{font-weight:700}
 .timeline-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin-top:14px}
 .timeline{min-width:720px}
 .tl-row{display:grid;grid-template-columns:140px 1fr;border-bottom:1px solid var(--line);min-height:52px}
@@ -350,6 +375,7 @@ fieldset:disabled{opacity:.55}
         <p class="past-note" id="pastNote" hidden>지난 날짜입니다. 관리자에게만 보이며 수정할 수 없습니다.</p>
         <div class="summary"><span id="listTitle">배차 목록</span><span id="usage"></span></div>
         <div class="cards" id="cards"><p class="empty">불러오는 중…</p></div>
+        <div class="wide-only" id="weekBox"><div class="wk-wrap"><table class="wk" id="weekGrid"></table></div></div>
         <div class="wide-only" id="timelineBox"><div class="timeline-wrap"><div class="timeline" id="timeline"></div></div></div>
       </div>
     </section>
@@ -842,6 +868,8 @@ fieldset:disabled{opacity:.55}
     const date=$('boardDate').value;
     $('pastNote').hidden = !(me.isAdmin && mode==='day' && date < jktToday());
     $('timelineBox').hidden = mode!=='day';
+    $('weekBox').hidden = mode!=='week';
+    $('cards').classList.toggle('narrow-only', mode==='week');   // wide screens use the week grid instead
     if (mode==='week') renderWeek(date);
     else if (mode==='month') renderMonth(date);
     else renderDay(date);
@@ -875,12 +903,36 @@ fieldset:disabled{opacity:.55}
     const total=days.reduce((n,d) => n+dayList(d).length, 0);
     $('listTitle').textContent=`${mdw(days[0])} – ${mdw(days[6])} · 배차 ${total}건`;
     $('usage').textContent='';
-    if (!loaded){ $('cards').innerHTML='<p class="empty">불러오는 중…</p>'; return; }
+    if (!loaded){ $('cards').innerHTML='<p class="empty">불러오는 중…</p>'; $('weekGrid').innerHTML=''; return; }
+    renderWeekGrid(days);
     $('cards').innerHTML = days.map(d => {
       const list=dayList(d), hidden=!me.isAdmin && d<today;
       return `<button type="button" class="dayhead${d===today?' today':''}${d<today?' past':''}" data-action="pick-day" data-date="${d}"><b>${mdw(d)}</b><span>${hidden?'':list.length?list.length+'건':'배차 없음'}</span></button>`
         + (hidden ? '' : list.map(cardHtml).join(''));
     }).join('');
+  }
+
+  // Wide screens: one row per vehicle, one column per day; each cell lists that day's bookings.
+  function renderWeekGrid(days){
+    const today=jktToday();
+    const weekB=bookings.filter(b => b.date>=days[0] && b.date<=days[6]);
+    const rows=vehicles.filter(v => days.some(d => vOk(v.id,d)) || weekB.some(b => b.vehicleId===v.id));
+    const head=`<thead><tr><th class="veh">차량</th>${days.map(d =>
+      `<th class="${d===today?'today':''}${dowOf(d)===0?' sun':''}" data-action="pick-day" data-date="${d}" title="이 날 자세히 보기">${mdw(d)}</th>`).join('')}</tr></thead>`;
+    const body=rows.map(v => `<tr><th class="veh"><span class="plate">${esc(v.plate)}</span><small>${esc(v.model)}</small></th>${days.map(d => {
+      const hidden=!me.isAdmin && d<today;
+      const list=hidden ? [] : weekB.filter(b => b.date===d && b.vehicleId===v.id).sort((a,b) => a.start-b.start);
+      const cls=[d===today?'today':'', d<today?'past':'', !vOk(v.id,d)?'off':''].filter(Boolean).join(' ');
+      return `<td class="${cls}">${list.map(b => {
+        const dr=dById(b.driverId), u=uById(b.requesterId);
+        const editable=canModify(b) && !b._pending;
+        const time=b.type==='day' ? '종일' : `${fromMin(b.start)}–${fromMin(b.end)}`;
+        const tip=`${time} · ${u?u.name:''} · ${dr?dr.name:''}${b.flight?' · '+b.flight:''}${b.purpose?' · '+b.purpose:''}`;
+        return `<button type="button" class="wk-item ${esc(b.type)}${b._pending?' pending':''}" ${editable?`data-action="edit" data-id="${esc(b.id)}"`:''} title="${esc(tip)}">
+          <span class="t">${time}${b.type==='air'?' 공항':''}</span><span>${esc(u?u.name:'-')}</span><span class="muted">${esc(dr?dr.name:'-')}</span></button>`;
+      }).join('')}</td>`;
+    }).join('')}</tr>`).join('');
+    $('weekGrid').innerHTML = head + `<tbody>${body || `<tr><td colspan="8" class="empty">표시할 차량이 없습니다.</td></tr>`}</tbody>`;
   }
 
   // Calendar grid; each day shows a count (and names on wide screens). Tap a day to open it.
