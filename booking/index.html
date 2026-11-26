@@ -102,6 +102,18 @@ fieldset{border:0;padding:0;margin:0;min-width:0}
 fieldset:disabled{opacity:.55}
 .row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
 .mt{margin-top:9px}
+#formFields > label.f{margin-top:9px}
+.date-head{display:flex;justify-content:space-between;align-items:flex-end;gap:8px}
+.inline-check{display:inline-flex;align-items:center;gap:5px;font-size:.78rem;color:var(--ink);cursor:pointer;margin:9px 0 3px;white-space:nowrap}
+.inline-check input{width:16px;height:16px;margin:0}
+#dateRow{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+#dateRow.multi{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center}
+#dateRow .tilde{color:var(--muted)}
+.multi-opts{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.multi-opts .inline-check{margin:6px 0 0}
+.multi-opts .hint{margin:6px 0 0}
+.msg{white-space:pre-line}
+.tag.range{background:var(--day-soft);color:var(--brand)}
 .row2 label.f{margin-top:0}
 .hint{font-size:.74rem;color:var(--muted);margin:6px 0 0}
 .inline-select{width:auto;min-height:32px;padding:3px 6px;font-size:16px}
@@ -232,7 +244,7 @@ fieldset:disabled{opacity:.55}
 @media (min-width:600px){.modal{align-items:center}}
 .modal-box{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:20px;max-width:420px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.25)}
 .modal-box p{margin:0 0 18px}
-.modal-actions{display:flex;gap:8px}
+.modal-actions{display:flex;gap:8px;flex-wrap:wrap}
 .modal-actions .btn{flex:1;min-height:42px}
 .toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + 14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:10px;font-size:.9rem;max-width:90vw;text-align:center}
 </style>
@@ -256,8 +268,19 @@ fieldset:disabled{opacity:.55}
       <form class="panel" id="form" novalidate>
         <h2 id="formTitle">새 배차 등록</h2>
         <fieldset id="formFields" disabled>
-          <label class="f" for="fDate">날짜</label>
-          <input type="date" id="fDate" required>
+          <div class="date-head">
+            <label class="f" for="fDate" id="fDateLabel">날짜</label>
+            <label class="inline-check" id="multiToggle"><input type="checkbox" id="multi"> 여러 날 예약</label>
+          </div>
+          <div id="dateRow">
+            <input type="date" id="fDate" required>
+            <span class="tilde" hidden>~</span>
+            <input type="date" id="fDateEnd" aria-label="종료일" hidden>
+          </div>
+          <div class="multi-opts" id="multiOpts" hidden>
+            <label class="inline-check"><input type="checkbox" id="skipWeekend" checked> 주말(토·일) 제외</label>
+            <span class="hint" id="multiInfo"></span>
+          </div>
 
           <div class="row2 mt">
             <div><label class="f" for="fRequester">사용자</label><select id="fRequester" required><option value="">불러오는 중…</option></select></div>
@@ -476,17 +499,22 @@ fieldset:disabled{opacity:.55}
   const canModify=b => b.date >= jktToday();
 
   /* ===== UI helpers ===== */
-  function askConfirm(text, yesLabel){
+  // In-page dialog. choices: [{key, label, warn?}]; resolves to the chosen key, or false when cancelled.
+  function askChoice(text, choices){
     return new Promise(resolve => {
-      const m=$('modal'), yes=$('modalYes'), no=$('modalNo'), prev=document.activeElement;
-      $('modalText').textContent=text; yes.textContent=yesLabel||'확인'; m.hidden=false; yes.focus();
+      const m=$('modal'), box=m.querySelector('.modal-actions'), prev=document.activeElement;
+      $('modalText').textContent=text;
+      box.innerHTML='<button type="button" class="btn" data-k="">취소</button>' +
+        choices.map(c => `<button type="button" class="btn${c.warn?' warn':''}" data-k="${esc(c.key)}">${esc(c.label)}</button>`).join('');
+      m.hidden=false; box.lastElementChild.focus();
       const onKey=e => { if (e.key==='Escape') done(false); };
-      const done=v => { m.hidden=true; yes.onclick=no.onclick=m.onclick=null; document.removeEventListener('keydown',onKey); if (prev && prev.focus) prev.focus(); resolve(v); };
-      yes.onclick=() => done(true); no.onclick=() => done(false);
+      const done=v => { m.hidden=true; box.onclick=m.onclick=null; document.removeEventListener('keydown',onKey); if (prev && prev.focus) prev.focus(); resolve(v); };
+      box.onclick=e => { const b=e.target.closest('button'); if (b) done(b.dataset.k || false); };
       m.onclick=e => { if (e.target===m) done(false); };
       document.addEventListener('keydown',onKey);
     });
   }
+  const askConfirm=(text, yesLabel) => askChoice(text, [{key:'yes', label:yesLabel||'확인', warn:true}]).then(k => k==='yes');
   let toastTimer;
   function notify(text, ms){ const t=$('toast'); t.textContent=text; t.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(() => { t.hidden=true; }, ms||3000); }
   function banner(text){ const b=$('banner'); b.textContent=text||''; b.hidden=!text; }
@@ -590,9 +618,32 @@ fieldset:disabled{opacity:.55}
     if (v) $('fVehicle').value=v.id;
   });
 
+  /* Multi-day booking */
+  const isWeekend=iso => { const w=new Date(iso+'T12:00:00Z').getUTCDay(); return w===0 || w===6; };
+  function multiDates(){
+    const from=$('fDate').value, to=$('fDateEnd').value;
+    if (!$('multi').checked) return from ? [from] : [];
+    if (!from || !to || to<from) return [];
+    const out=[]; for (let d=from; d<=to && out.length<62; d=addDays(d,1)) if (!($('skipWeekend').checked && isWeekend(d))) out.push(d);
+    return out;
+  }
+  function updateMulti(){
+    const on=$('multi').checked;
+    $('dateRow').classList.toggle('multi', on);
+    $('dateRow').querySelector('.tilde').hidden=!on; $('fDateEnd').hidden=!on; $('multiOpts').hidden=!on;
+    $('fDateLabel').textContent = on ? '기간 (시작일 ~ 종료일)' : '날짜';
+    if (on){
+      $('fDateEnd').min=$('fDate').value || jktToday();
+      if (!$('fDateEnd').value || $('fDateEnd').value < $('fDate').value) $('fDateEnd').value=addDays($('fDate').value || jktToday(), 6);
+      const n=multiDates().length;
+      $('multiInfo').textContent = n ? `총 ${n}일 예약` : '종료일을 확인하세요';
+    }
+  }
+  ['multi','skipWeekend','fDate','fDateEnd'].forEach(id => $(id).addEventListener('change', updateMulti));
+
   $('form').addEventListener('submit', async e => {
     e.preventDefault();
-    const date=$('fDate').value, type=usage();
+    const date=$('fDate').value, type=usage(), multi=$('multi').checked && !editingId;
     if (!date) return showMsg('날짜를 선택하세요.','err');
     if (date < jktToday()) return showMsg('지난 날짜에는 배차를 등록할 수 없습니다.','err');
     if (!uById($('fRequester').value)) return showMsg('사용자를 선택하세요.','err');
@@ -604,34 +655,47 @@ fieldset:disabled{opacity:.55}
     else if (type==='time'){ b.start=toMin($('tStart').value); b.end=toMin($('tEnd').value); }
     else { b.start=0; b.end=1440; }
     if (b.end <= b.start) return showMsg('종료 시각이 시작 시각보다 뒤여야 합니다.','err');
-    if (!dOk(b.driverId,date)) return showMsg('선택한 기사는 이 날짜에 배차할 수 없습니다.','err');
-    if (!vOk(b.vehicleId,date)) return showMsg('선택한 차량은 이 날짜에 배차할 수 없습니다.','err');
-    const clash=bookings.find(x => x.id!==editingId && x.date===date &&
-      (x.vehicleId===b.vehicleId || x.driverId===b.driverId) && x.start < b.end && b.start < x.end);
-    if (clash){
-      const who = clash.vehicleId===b.vehicleId ? `차량 ${vById(b.vehicleId)?.plate||''}` : `기사 ${dById(b.driverId)?.name||''}`;
-      return showMsg(`${who}은(는) 이미 ${timeText(clash)}에 배차되어 있습니다. 시간이나 배정을 바꿔 주세요.`,'err');
-    }
+
+    const dates = multi ? multiDates() : [date];
+    if (!dates.length) return showMsg('예약할 날짜가 없습니다. 기간을 확인하세요.','err');
+    if (dates.length > 31) return showMsg('한 번에 최대 31일까지 예약할 수 있습니다.','err');
+
+    // Check every day here first, so problems show up instantly.
+    const problems=[];
+    dates.forEach(d => {
+      const tag = multi ? `${fmtMD(d)} ` : '';
+      if (!dOk(b.driverId,d)) return problems.push(`${tag}기사 ${dById(b.driverId)?.name||''}은(는) 이 날짜에 배차할 수 없습니다.`);
+      if (!vOk(b.vehicleId,d)) return problems.push(`${tag}차량 ${vById(b.vehicleId)?.plate||''}은(는) 이 날짜에 배차할 수 없습니다.`);
+      const clash=bookings.find(x => x.id!==editingId && x.date===d &&
+        (x.vehicleId===b.vehicleId || x.driverId===b.driverId) && x.start < b.end && b.start < x.end);
+      if (clash) problems.push(`${tag}${clash.vehicleId===b.vehicleId ? '차량 '+(vById(b.vehicleId)?.plate||'') : '기사 '+(dById(b.driverId)?.name||'')}은(는) 이미 ${timeText(clash)}에 배차되어 있습니다.`);
+    });
+    if (problems.length) return showMsg((multi ? '다음 날짜 때문에 예약하지 못했습니다.\n' : '') + problems.join('\n') + (multi ? '' : ' 시간이나 배정을 바꿔 주세요.'),'err');
 
     // Show it right away, then save.
-    const wasEdit=!!editingId, before=bookings.slice();
-    const local={...b, id: editingId || 'tmp-'+Date.now(), _pending:true};
-    bookings = wasEdit ? bookings.map(x => x.id===editingId ? {...x, ...local} : x) : bookings.concat(local);
+    const wasEdit=!!editingId, before=bookings.slice(), stamp=Date.now();
+    const locals=dates.map((d,i) => ({...b, date:d, id: editingId || `tmp-${stamp}-${i}`, _pending:true}));
+    bookings = wasEdit ? bookings.map(x => x.id===editingId ? {...x, ...locals[0]} : x) : bookings.concat(locals);
     resetEdit();
-    $('boardDate').value=date; renderBoard();
-    notify(wasEdit ? '배차를 수정했습니다.' : '배차를 등록했습니다.');
+    $('boardDate').value=date;
+    if (multi && mode==='day') setMode('week');
+    renderBoard();
+    notify(wasEdit ? '배차를 수정했습니다.' : multi ? `${dates.length}일 배차를 등록했습니다.` : '배차를 등록했습니다.');
     if (!matchMedia('(min-width:900px)').matches) go('board');
-    try { await mutate('saveBooking', [b]); }
+    try { await (multi ? mutate('saveBookings', [b, dates]) : mutate('saveBooking', [b])); }
     catch(err){
       // Undo and put the entry back in the form so nothing has to be retyped.
       bookings=before; renderBoard();
       if (err.auth) return showLogin(err.message);
-      fillForm(b, wasEdit); go('book'); showMsg(errText(err),'err');
+      fillForm(b, wasEdit);
+      if (multi){ $('multi').checked=true; $('fDateEnd').value=dates[dates.length-1]; updateMulti(); }
+      go('book'); showMsg(errText(err),'err');
     }
   });
 
   function resetEdit(){
     editingId=null;
+    $('multi').checked=false; $('multiToggle').hidden=false; updateMulti();
     $('formTitle').textContent='새 배차 등록'; $('submitBtn').textContent='배차 등록';
     $('cancelEdit').hidden=true; $('fPurpose').value=''; $('aFlight').value='';
     $('msg').className='msg';
@@ -644,6 +708,7 @@ fieldset:disabled{opacity:.55}
   }
   function fillForm(b, isEdit){
     editingId = isEdit ? b.id : null;
+    $('multi').checked=false; $('multiToggle').hidden=isEdit; updateMulti();   // an edit changes one day only
     $('fDate').value=b.date; fillSelects();
     $('fRequester').value=uById(b.requesterId) ? b.requesterId : '';
     $('fDriver').value=b.driverId; $('fVehicle').value=b.vehicleId;
@@ -658,12 +723,21 @@ fieldset:disabled{opacity:.55}
   }
 
   async function removeBooking(id){
-    if (!(await askConfirm('이 배차를 삭제할까요?','삭제'))) return;
+    const target=bookings.find(b => b.id===id); if (!target) return;
+    const today=jktToday();
+    const rest=target.groupId ? bookings.filter(b => b.groupId===target.groupId && b.date>=today) : [];
+    let scope='one';
+    if (rest.length > 1){
+      scope=await askChoice(`여러 날 예약(${groupRange(target)}) 중 하루입니다. 어떻게 삭제할까요?`,
+        [{key:'one', label:'이 날만 삭제'}, {key:'group', label:`남은 ${rest.length}일 모두`, warn:true}]);
+      if (!scope) return;
+    } else if (!(await askConfirm('이 배차를 삭제할까요?','삭제'))) return;
+    const gone = scope==='group' ? new Set(rest.map(b => b.id)) : new Set([id]);
     const before=bookings.slice();
-    bookings=bookings.filter(b => b.id!==id); renderBoard();
-    if (editingId===id) resetEdit();
-    notify('배차를 삭제했습니다.');
-    try { await mutate('deleteBooking', [id]); }
+    bookings=bookings.filter(b => !gone.has(b.id)); renderBoard();
+    if (gone.has(editingId)) resetEdit();
+    notify(scope==='group' ? `${gone.size}일 배차를 삭제했습니다.` : '배차를 삭제했습니다.');
+    try { await mutate('deleteBooking', [id, scope]); }
     catch(err){ bookings=before; renderBoard(); if (err.auth) showLogin(err.message); else notify('삭제하지 못했습니다. '+errText(err), 4500); }
   }
 
@@ -700,6 +774,11 @@ fieldset:disabled{opacity:.55}
   $('today').addEventListener('click', () => { $('boardDate').value=jktToday(); renderBoard(); });
   $('boardDate').addEventListener('change', renderBoard);
 
+  // "11/24–11/28 · 5일" for a multi-day booking (days visible to this viewer).
+  function groupRange(b){
+    const days=bookings.filter(x => x.groupId===b.groupId).map(x => x.date).sort();
+    return days.length ? `${fmtMD(days[0])}–${fmtMD(days[days.length-1])} · ${days.length}일` : '';
+  }
   function cardHtml(b){
     const v=vById(b.vehicleId), d=dById(b.driverId), u=uById(b.requesterId);
     const memo=[b.type==='air' ? b.flight : '', b.purpose].filter(Boolean).join(' · ');
@@ -711,7 +790,7 @@ fieldset:disabled{opacity:.55}
     return `<article class="card ${esc(b.type)}">
       <div class="when">${when}</div>
       <div class="what">
-        <div class="who">${esc(u ? uLabel(u) : '(삭제된 사용자)')}${b.type==='air'?' <span class="tag air">공항</span>':''}</div>
+        <div class="who">${esc(u ? uLabel(u) : '(삭제된 사용자)')}${b.type==='air'?' <span class="tag air">공항</span>':''}${b.groupId?` <span class="tag range">${groupRange(b)}</span>`:''}</div>
         <div class="line">${esc(d ? d.name : '(삭제된 기사)')} · ${v?`<span class="plate">${esc(v.plate)}</span> <span class="muted">${esc(v.model)}</span>`:'(삭제된 차량)'}</div>
         ${memo?`<div class="memo">${esc(memo)}</div>`:''}
       </div>
@@ -958,7 +1037,7 @@ fieldset:disabled{opacity:.55}
     showLogin();
   });
 
-  showSub(); renderBoard();
+  showSub(); updateMulti(); renderBoard();
   if (code){ $('logout').hidden=false; refresh(); } else showLogin();
 })();
 </script>
