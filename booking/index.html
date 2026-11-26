@@ -187,10 +187,11 @@ fieldset:disabled{opacity:.55}
 .when span{font-size:.72rem;color:var(--muted)}
 .what{min-width:0}
 .who{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-weight:700;font-size:.9rem}
-.line{margin-top:2px;font-size:.78rem;display:grid;grid-template-columns:6.4em max-content minmax(0,1fr);align-items:center;column-gap:6px}
-.line > span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.line .plate{min-width:6.9em;justify-content:center}
-@media (max-width:420px){ .line{grid-template-columns:6.4em max-content} .line .muted{display:none} }
+/* Left: user over driver. Right: plate over model — same rows, so every card lines up. */
+.pair{display:grid;grid-template-columns:minmax(0,1fr) 7.2em;column-gap:8px;row-gap:2px;align-items:center}
+.pair .drv{font-size:.78rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pair .plate{justify-content:center}
+.pair .model{font-size:.7rem;color:var(--muted);text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .memo{margin-top:2px;font-size:.74rem;color:var(--muted);overflow-wrap:anywhere}
 .acts{display:flex;flex-direction:column;gap:4px}
 .empty{padding:18px 10px;text-align:center;color:var(--muted);font-size:.85rem}
@@ -818,13 +819,18 @@ fieldset:disabled{opacity:.55}
     const when = b.type==='day' ? '<b>종일</b>' : `<b>${fromMin(b.start)}</b><span>~ ${fromMin(b.end)}</span>`;
     if (b._pending) return `<article class="card ${esc(b.type)} pending">
       <div class="when">${when}</div>
-      <div class="what"><div class="who">${esc(u ? uLabel(u) : '')} <span class="tag mine">저장 중</span></div>
-        <div class="line"><span class="drv">${esc(d ? d.name : '')}</span>${v?`<span class="plate">${esc(v.plate)}</span>`:''}</div></div><div></div></article>`;
+      <div class="what"><div class="pair">
+        <div class="who">${esc(u ? uLabel(u) : '')} <span class="tag mine">저장 중</span></div>${v?`<span class="plate">${esc(v.plate)}</span>`:'<span></span>'}
+        <div class="drv">${esc(d ? d.name : '')}</div><div class="model">${v?esc(v.model):''}</div></div></div><div></div></article>`;
     return `<article class="card ${esc(b.type)}">
       <div class="when">${when}</div>
       <div class="what">
-        <div class="who">${esc(u ? uLabel(u) : '(삭제된 사용자)')}${b.type==='air'?' <span class="tag air">공항</span>':''}${b.groupId?` <span class="tag range">${groupRange(b)}</span>`:''}</div>
-        <div class="line"><span class="drv">${esc(d ? d.name : '(삭제된 기사)')}</span>${v?`<span class="plate">${esc(v.plate)}</span><span class="muted">${esc(v.model)}</span>`:'<span>(삭제된 차량)</span>'}</div>
+        <div class="pair">
+          <div class="who">${esc(u ? uLabel(u) : '(삭제된 사용자)')}${b.type==='air'?' <span class="tag air">공항</span>':''}${b.groupId?` <span class="tag range">${groupRange(b)}</span>`:''}</div>
+          ${v?`<span class="plate">${esc(v.plate)}</span>`:'<span class="model">(삭제된 차량)</span>'}
+          <div class="drv">${esc(d ? d.name : '(삭제된 기사)')}</div>
+          <div class="model">${v?esc(v.model):''}</div>
+        </div>
         ${memo?`<div class="memo">${esc(memo)}</div>`:''}
       </div>
       ${canModify(b) || me.isAdmin ? `<div class="acts">${canModify(b)?`<button type="button" class="btn sm" data-action="edit" data-id="${esc(b.id)}">수정</button>`:''}<button type="button" class="btn sm danger" data-action="delete" data-id="${esc(b.id)}">삭제</button></div>` : ''}
