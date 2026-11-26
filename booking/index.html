@@ -1,1 +1,800 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#004B9D">
+<title>Booking Mobil Kantor</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%9A%90%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ===== Tokens (IBK navy #004B9D + sky #0092D7) ===== */
+:root{
+  --bg:#F6F9FC; --surface:#FFFFFF; --ink:#13233F; --muted:#5D6B80; --line:#D9E3EF;
+  --brand:#004B9D; --accent:#0092D7; --header-bg:#FFFFFF; --header-ink:#004B9D;
+  --day:#004B9D; --day-soft:#E1E9F4; --air:#0E7C66; --air-soft:#DDF1EB; --time:#0079B8; --time-soft:#E3F2FB;
+  --danger:#B3261E; --danger-soft:#FBE7E5; --note:#8A6D1D; --note-soft:#FBF1D6;
+  --nav-h:62px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme:dark;
+    --bg:#0E1726; --surface:#16223A; --ink:#E7EEF7; --muted:#9AAAC0; --line:#2A3A55;
+    --brand:#1F6FC9; --accent:#33AEEA; --header-bg:#0A2D5E; --header-ink:#FFFFFF;
+    --day:#8FB6EC; --day-soft:#1D3152; --air:#5CC9AE; --air-soft:#173A33; --time:#5CC0EE; --time-soft:#14324A;
+    --danger:#F2867E; --danger-soft:#3F2220; --note:#E8C766; --note-soft:#3A3220;
+  }
+}
 
+/* ===== Base ===== */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;font-size:15px;line-height:1.5;
+  padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px))}
+button,input,select{font:inherit;color:inherit}
+h2{margin:0 0 14px;font-size:1.1rem;font-weight:700}
+h3{margin:0 0 10px;font-size:1rem;font-weight:700}
+.muted{color:var(--muted)}
+[hidden]{display:none!important}
+
+/* ===== Header ===== */
+.top{background:var(--header-bg);color:var(--header-ink);padding:calc(14px + env(safe-area-inset-top,0px)) 16px 14px;border-bottom:4px solid var(--accent)}
+.top-inner{max-width:1180px;margin:0 auto}
+h1{margin:0;font-size:1.3rem;font-weight:700;letter-spacing:-.02em;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{display:inline-flex;border-radius:7px;flex:none}
+.logo img{width:26px;height:25px;background:#FFFFFF;border-radius:7px;padding:3px;box-sizing:content-box;display:block}
+.role{font-size:.72rem;font-weight:500;background:var(--accent);color:#FFFFFF;padding:2px 8px;border-radius:20px;letter-spacing:0}
+.clock{margin:2px 0 0;color:var(--muted);font-size:.82rem}
+.top-inner{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.logout{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:8px;padding:5px 10px;font-size:.8rem;cursor:pointer;flex:none}
+.login{position:fixed;inset:0;z-index:70;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px}
+.login-box{max-width:360px;width:100%;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:16px;padding:24px}
+.login-box h2{display:flex;align-items:center;gap:10px;color:var(--brand)}
+.login-box img{width:26px;height:25px}
+.login-box input{margin-top:14px}
+.banner{max-width:1180px;margin:12px auto 0;padding:12px 16px;border-radius:10px;background:var(--note-soft);border:1px solid var(--line)}
+
+/* ===== Layout ===== */
+main{max-width:1180px;margin:0 auto;padding:14px 12px 24px}
+.view{display:none}
+.view.on{display:block}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.panel + .panel{margin-top:14px}
+@media (min-width:900px){
+  main{padding:22px 16px 32px}
+  #pair:not(.off){display:grid;grid-template-columns:380px 1fr;gap:22px;align-items:start}
+  #pair:not(.off) > .view{display:block}
+  .nav button[data-view="board"]{display:none}
+}
+
+/* ===== Bottom navigation ===== */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--surface);border-top:1px solid var(--line);
+  display:flex;justify-content:center;padding:0 8px env(safe-area-inset-bottom,0px)}
+.nav button{flex:1;max-width:200px;height:var(--nav-h);border:0;background:transparent;color:var(--muted);font-size:.85rem;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer}
+.nav button svg{width:22px;height:22px}
+.nav button[aria-current="page"]{color:var(--brand);font-weight:700}
+
+/* ===== Form controls (16px inputs stop iOS from zooming) ===== */
+label.f{display:block;font-size:.85rem;color:var(--muted);margin:14px 0 6px}
+label.f:first-of-type{margin-top:0}
+input[type=date],input[type=text],input[type=number],select{
+  width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);min-height:46px;font-size:16px}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--time);outline-offset:2px}
+fieldset{border:0;padding:0;margin:0;min-width:0}
+fieldset:disabled{opacity:.55}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row2 label.f{margin-top:0}
+.hint{font-size:.8rem;color:var(--muted);margin:8px 0 0}
+.inline-select{width:auto;min-height:40px;padding:6px 8px;font-size:15px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--surface);padding:9px 14px;min-height:40px;border-radius:10px;cursor:pointer}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#FFFFFF;font-weight:700;width:100%;margin-top:18px;padding:14px;font-size:1rem}
+.btn.primary:hover:not(:disabled){background:var(--accent);border-color:var(--accent)}
+.btn.ghost{background:transparent;width:100%;margin-top:8px}
+.btn.solid{background:var(--ink);color:var(--surface);border-color:var(--ink);font-weight:500}
+.btn.danger{color:var(--danger)}
+.btn.warn{background:var(--danger);border-color:var(--danger);color:#FFFFFF;font-weight:500}
+.btn.sm{min-height:34px;padding:5px 11px;font-size:.85rem}
+.msg{margin-top:12px;padding:10px 12px;border-radius:9px;font-size:.9rem;display:none}
+.msg.err{display:block;background:var(--danger-soft);color:var(--danger)}
+.msg.ok{display:block;background:var(--air-soft);color:var(--air)}
+
+/* ===== Booking form ===== */
+#form{border-top:4px solid var(--accent)}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label{display:flex;align-items:center;justify-content:center;min-height:46px;padding:8px 4px;border:1px solid var(--line);border-radius:10px;cursor:pointer;font-size:.92rem;background:var(--bg);text-align:center}
+.seg input:checked + label{border-color:var(--brand);background:var(--brand);color:#FFFFFF;font-weight:500}
+.seg input:focus-visible + label{outline:2px solid var(--time);outline-offset:2px}
+.sub{margin-top:12px;padding:12px;border-radius:10px;background:var(--bg);border:1px dashed var(--line)}
+.sub input,.sub select{background:var(--surface)}
+.tpick{display:flex;align-items:center;gap:4px}
+.tpick select{flex:1;min-width:0;padding:11px 26px 11px 12px;-webkit-appearance:none;appearance:none;font-variant-numeric:tabular-nums;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%235D6B80' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;background-size:10px 6px}
+.tpick span{font-weight:700;color:var(--muted)}
+
+/* ===== Board ===== */
+.datenav{display:flex;align-items:center;gap:6px}
+.datenav input{flex:1;min-width:0}
+.datenav .btn{min-width:44px;min-height:46px}
+.summary{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:12px 0 4px;font-size:.88rem;color:var(--muted)}
+.past-note{margin:10px 0 0;padding:8px 12px;border-radius:8px;background:var(--note-soft);color:var(--note);font-size:.85rem}
+
+.cards{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.card{display:grid;grid-template-columns:64px 1fr;gap:12px;padding:12px;border:1px solid var(--line);border-left:5px solid var(--time);border-radius:12px;background:var(--surface)}
+.card.day{border-left-color:var(--day)}
+.card.air{border-left-color:var(--air)}
+.when{display:flex;flex-direction:column;font-variant-numeric:tabular-nums}
+.when b{font-size:1.05rem;font-weight:700}
+.when span{font-size:.82rem;color:var(--muted)}
+.what{min-width:0}
+.who{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-weight:700}
+.line{margin-top:4px;font-size:.88rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.memo{margin-top:4px;font-size:.85rem;color:var(--muted);overflow-wrap:anywhere}
+.acts{grid-column:1 / -1;display:flex;gap:6px;justify-content:flex-end}
+.empty{padding:28px 12px;text-align:center;color:var(--muted)}
+
+.tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.74rem;font-weight:500}
+.tag.day{background:var(--day-soft)}
+.tag.air{background:var(--air-soft);color:var(--air)}
+.tag.time{background:var(--time-soft);color:var(--time)}
+.tag.mine{background:var(--note-soft);color:var(--note)}
+.tag.off{background:var(--danger-soft);color:var(--danger)}
+.plate{display:inline-flex;align-items:center;background:#FFFFFF;color:#111418;border:2px solid #111418;border-radius:4px;padding:0 7px;font-weight:700;letter-spacing:.05em;font-size:.82rem;white-space:nowrap}
+
+/* Timeline (wide screens only) */
+.wide-only{display:none}
+@media (min-width:900px){ .wide-only{display:block} }
+.timeline-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin-top:14px}
+.timeline{min-width:720px}
+.tl-row{display:grid;grid-template-columns:140px 1fr;border-bottom:1px solid var(--line);min-height:52px}
+.tl-row:last-child{border-bottom:0}
+.tl-row.head{min-height:28px}
+.tl-label{padding:8px 10px;border-right:1px solid var(--line);display:flex;flex-direction:column;justify-content:center;gap:2px}
+.tl-label small{color:var(--muted);font-size:.76rem}
+.tl-track{position:relative;background-image:repeating-linear-gradient(90deg,var(--line) 0 1px,transparent 1px calc(100%/8))}
+.tl-hours{position:relative;height:28px}
+.tl-hours span{position:absolute;top:6px;font-size:.74rem;color:var(--muted);transform:translateX(-50%)}
+.tl-hours span:first-child{transform:none;left:4px!important}
+.tl-hours span:last-child{transform:translateX(-100%);left:calc(100% - 4px)!important}
+.bar{position:absolute;top:7px;bottom:7px;border-radius:7px;padding:3px 8px;font-size:.74rem;line-height:1.3;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;border:0;text-align:left;color:var(--ink);cursor:default}
+.bar[data-action]{cursor:pointer}
+.bar.day{background:var(--day-soft);border-left:4px solid var(--day)}
+.bar.air{background:var(--air-soft);border-left:4px solid var(--air)}
+.bar.time{background:var(--time-soft);border-left:4px solid var(--time)}
+
+/* ===== Manage ===== */
+.manage{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.manage .panel + .panel{margin-top:0}
+.item{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.item .model{margin-left:6px}
+.row-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;margin-left:auto}
+.add{display:grid;grid-template-columns:1fr;gap:8px;margin-top:14px}
+@media (min-width:480px){.add{grid-template-columns:1fr 1fr auto}}
+.avail-grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px}
+@media (min-width:600px){.avail-grid{grid-template-columns:1fr 1fr}}
+.check{display:flex;align-items:center;gap:10px;min-height:44px;border-bottom:1px solid var(--line);cursor:pointer}
+.check input{width:20px;height:20px;margin:0}
+.avail-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.avail-status{font-size:.85rem;color:var(--muted);margin:8px 0 0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:20px;padding:6px 12px;font-size:.82rem;cursor:pointer}
+.chip[aria-current="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+
+/* ===== Dialog & toast ===== */
+.modal{position:fixed;inset:0;z-index:50;background:rgba(15,19,24,.45);display:flex;align-items:flex-end;justify-content:center;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px))}
+@media (min-width:600px){.modal{align-items:center}}
+.modal-box{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:20px;max-width:420px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+.modal-box p{margin:0 0 18px}
+.modal-actions{display:flex;gap:8px}
+.modal-actions .btn{flex:1;min-height:46px}
+.toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + 14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:10px;font-size:.9rem;max-width:90vw;text-align:center}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div>
+      <h1><a class="logo" href="../" aria-label="Siap Jakarta로 이동"><img id="logoImg" src="data:image/png;base64,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" alt="" width="26" height="25"></a>Booking Mobil Kantor <span class="role" id="roleBadge" hidden>관리자</span></h1>
+      <p class="clock" id="clock">자카르타 시간(WIB) 기준</p>
+    </div>
+    <button type="button" class="logout" id="logout" hidden>로그아웃</button>
+  </div>
+</header>
+<div class="banner" id="banner" hidden></div>
+
+<main>
+  <div id="pair">
+    <!-- ===== Booking form ===== -->
+    <section class="view on" id="view-book">
+      <form class="panel" id="form" novalidate>
+        <h2 id="formTitle">새 배차 등록</h2>
+        <fieldset id="formFields" disabled>
+          <label class="f" for="fDate">날짜</label>
+          <input type="date" id="fDate" required>
+
+          <label class="f" for="fRequester">사용자</label>
+          <select id="fRequester" required><option value="">불러오는 중…</option></select>
+
+          <label class="f" for="fDriver">운전기사</label>
+          <select id="fDriver" required><option value="">불러오는 중…</option></select>
+
+          <label class="f" for="fVehicle">차량번호 (차종)</label>
+          <select id="fVehicle" required><option value="">불러오는 중…</option></select>
+
+          <label class="f">사용 시간</label>
+          <div class="seg" role="radiogroup">
+            <input type="radio" name="usage" id="uDay" value="day" checked><label for="uDay">종일</label>
+            <input type="radio" name="usage" id="uAir" value="air"><label for="uAir">공항픽업</label>
+            <input type="radio" name="usage" id="uTime" value="time"><label for="uTime">시간 지정</label>
+          </div>
+
+          <div class="sub" id="subDay">
+            <p class="hint" style="margin:0">종일 배차는 그날 하루 동안 차량과 기사를 묶어 둡니다.</p>
+          </div>
+
+          <div class="sub" id="subAir" hidden>
+            <div class="row2">
+              <div><label class="f" for="aTime_h">픽업/출발 시각</label><input type="hidden" id="aTime" value="10:00"><div class="tpick" data-for="aTime"></div></div>
+              <div><label class="f" for="aHours">예상 소요 (시간)</label><input type="number" id="aHours" min="1" max="12" step="0.5" value="4" inputmode="decimal"></div>
+            </div>
+            <p class="hint">자카르타 교통 체증을 감안해 기본 4시간으로 잡았습니다.</p>
+            <label class="f" for="aFlight">항공편 (선택)</label>
+            <input type="text" id="aFlight" placeholder="예: GA 871" autocomplete="off">
+          </div>
+
+          <div class="sub" id="subTime" hidden>
+            <div class="row2">
+              <div><label class="f" for="tStart_h">시작 시간</label><input type="hidden" id="tStart" value="13:00"><div class="tpick" data-for="tStart"></div></div>
+              <div><label class="f" for="tEnd_h">종료 시간</label><input type="hidden" id="tEnd" value="15:00"><div class="tpick" data-for="tEnd"></div></div>
+            </div>
+          </div>
+
+          <label class="f" for="fPurpose">목적·행선지 (선택)</label>
+          <input type="text" id="fPurpose" placeholder="예: 스나얀 사무실 → 쿠닝안 거래처 미팅" autocomplete="off">
+
+          <button type="submit" class="btn primary" id="submitBtn">배차 등록</button>
+          <button type="button" class="btn ghost" id="cancelEdit" hidden>수정 취소</button>
+        </fieldset>
+        <div class="msg" id="msg" role="status"></div>
+      </form>
+    </section>
+
+    <!-- ===== Board ===== -->
+    <section class="view" id="view-board">
+      <div class="panel">
+        <div class="datenav">
+          <button type="button" class="btn" id="prevDay" aria-label="이전 날">‹</button>
+          <input type="date" id="boardDate" aria-label="배차표 날짜">
+          <button type="button" class="btn" id="nextDay" aria-label="다음 날">›</button>
+          <button type="button" class="btn" id="today">오늘</button>
+        </div>
+        <p class="past-note" id="pastNote" hidden>지난 날짜입니다. 관리자에게만 보이며 수정할 수 없습니다.</p>
+        <div class="summary"><span id="listTitle">배차 목록</span><span id="usage"></span></div>
+        <div class="cards" id="cards"><p class="empty">불러오는 중…</p></div>
+        <div class="wide-only"><div class="timeline-wrap"><div class="timeline" id="timeline"></div></div></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== Manage (admin only) ===== -->
+  <section class="view" id="view-manage">
+    <div class="manage">
+      <div class="panel">
+        <h2>차량</h2>
+        <p class="hint" style="margin:-6px 0 6px">기본 기사를 정해 두면 배차 등록 때 그 기사를 고르면 이 차량이 자동으로 선택됩니다.</p>
+        <div id="vehicleList"></div>
+        <form class="add" id="addVehicle">
+          <input type="text" id="vPlate" placeholder="번호판 (예: B 1234 ABC)" aria-label="번호판" required autocomplete="off">
+          <input type="text" id="vModel" placeholder="차종 (예: 이노바 제닉스)" aria-label="차종" required autocomplete="off">
+          <button class="btn" type="submit">차량 추가</button>
+        </form>
+      </div>
+      <div class="panel">
+        <h2>운전기사</h2>
+        <div id="driverList"></div>
+        <form class="add" id="addDriver">
+          <input type="text" id="dName" placeholder="이름" aria-label="이름" required autocomplete="off">
+          <input type="text" id="dNote" placeholder="메모 (예: 한국어 가능)" aria-label="메모" autocomplete="off">
+          <button class="btn" type="submit">기사 추가</button>
+        </form>
+      </div>
+      <div class="panel">
+        <h2>사용자</h2>
+        <p class="hint" style="margin:-6px 0 6px">기본 기사를 정해 두면 배차 등록 때 사용자를 고르면 기사와 그 기사의 기본 차량이 자동으로 선택됩니다.</p>
+        <div id="userList"></div>
+        <form class="add" id="addUser">
+          <input type="text" id="uName" placeholder="이름" aria-label="이름" required autocomplete="off">
+          <input type="text" id="uDept" placeholder="부서 (예: 영업팀)" aria-label="부서" autocomplete="off">
+          <button class="btn" type="submit">사용자 추가</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h2>일자별 가용 차량·기사</h2>
+      <p class="hint" style="margin-top:0">따로 지정하지 않은 날짜는 위 목록의 기본 설정을 따릅니다(‘기본 제외’ 차량·기사는 빠짐). 날짜를 지정하면 그 날짜는 여기서 체크한 차량·기사만 배차할 수 있습니다.</p>
+      <div class="row2" style="margin-top:14px;max-width:460px">
+        <div><label class="f" for="avFrom">날짜 (시작일)</label><input type="date" id="avFrom"></div>
+        <div><label class="f" for="avTo">종료일 (기간 적용 시)</label><input type="date" id="avTo"></div>
+      </div>
+      <p class="avail-status" id="avStatus"></p>
+      <div class="avail-grid">
+        <div><h3>차량</h3><div id="avVehicles"></div></div>
+        <div><h3>운전기사</h3><div id="avDrivers"></div></div>
+      </div>
+      <div class="avail-actions">
+        <button type="button" class="btn solid" id="avSave">가용 설정 저장</button>
+        <button type="button" class="btn" id="avAll">모두 체크</button>
+        <button type="button" class="btn danger" id="avReset">지정 해제 (기본 설정으로)</button>
+      </div>
+      <div class="msg" id="avMsg" role="status"></div>
+      <p class="avail-status" style="margin-top:16px">지정된 날짜</p>
+      <div class="chips" id="avList"></div>
+    </div>
+  </section>
+</main>
+
+<nav class="nav" aria-label="메뉴">
+  <button type="button" data-view="book" aria-current="page">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>등록</button>
+  <button type="button" data-view="board">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>배차표</button>
+  <button type="button" data-view="manage" id="manageTab" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>관리</button>
+</nav>
+
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modalText">
+  <div class="modal-box">
+    <p id="modalText"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="modalNo">취소</button>
+      <button type="button" class="btn warn" id="modalYes">확인</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<div class="login" id="login" hidden>
+  <form class="login-box" id="loginForm" novalidate>
+    <h2><img id="loginLogo" alt="">Booking Mobil Kantor</h2>
+    <p class="hint" style="margin:0">접속 코드를 입력하세요. 관리자는 관리자 비밀번호를 입력합니다.</p>
+    <input type="password" id="code" placeholder="접속 코드" aria-label="접속 코드" autocomplete="current-password" required>
+    <button type="submit" class="btn primary" id="loginBtn">들어가기</button>
+    <div class="msg" id="loginMsg" role="status"></div>
+  </form>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ===== Settings: paste the Apps Script web app URL (…/exec) here ===== */
+  const API_URL = 'PASTE_YOUR_WEB_APP_URL_HERE';
+
+  /* ===== Utilities ===== */
+  const TZ='Asia/Jakarta';
+  const $=id => document.getElementById(id);
+  const pad=n => String(n).padStart(2,'0');
+  const toMin=t => { const [h,m]=t.split(':').map(Number); return h*60+m; };
+  const fromMin=m => `${pad(Math.floor(m/60))}:${pad(m%60)}`;
+  const esc=s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const jktToday=() => new Intl.DateTimeFormat('en-CA',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const addDays=(iso,n) => { const d=new Date(iso+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); };
+  const fmtMD=iso => { const d=new Date(iso+'T12:00:00Z'); return `${d.getUTCMonth()+1}/${d.getUTCDate()}`; };
+  const dateRange=(from,to) => { const out=[]; for (let d=from; d<=to && out.length<93; d=addDays(d,1)) out.push(d); return out; };
+  const typeLabel=t => ({day:'종일', air:'공항', time:'시간 지정'})[t] || t;
+  const timeText=b => b.type==='day' ? '종일' : `${fromMin(b.start)}–${fromMin(b.end)}`;
+
+  // Calls the Apps Script API. text/plain avoids a CORS preflight; the server returns the full data set after every change.
+  const CODE_KEY='bmk-access-code';
+  let code=''; try { code=localStorage.getItem(CODE_KEY)||''; } catch(e){}
+  async function api(action, ...args){
+    if (!/^https:\/\/script\.google\.com\//.test(API_URL)) throw new Error('API 주소가 설정되지 않았습니다. index.html 위쪽의 API_URL을 확인하세요.');
+    let out;
+    try {
+      const res=await fetch(API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify({action, code, args})});
+      out=await res.json();
+    } catch(e){ throw new Error('서버에 연결하지 못했습니다. 인터넷 연결을 확인하세요.'); }
+    if (!out.ok){ const err=new Error(out.error||'처리하지 못했습니다.'); err.auth=!!out.auth; throw err; }
+    return out.data;
+  }
+  const errText=e => (e && e.message) || '처리하지 못했습니다. 잠시 후 다시 시도하세요.';
+
+  /* ===== State ===== */
+  let me={email:'', isAdmin:false}, loaded=false;
+  let vehicles=[], drivers=[], users=[], bookings=[], availability={};
+  let editingId=null, avDirty=false, view='book';
+
+  /* ===== Lookups & rules ===== */
+  const vById=id => vehicles.find(v => v.id===id);
+  const dById=id => drivers.find(d => d.id===id);
+  const uById=id => users.find(u => u.id===id);
+  const uLabel=u => u.name + (u.dept ? ' · '+u.dept : '');
+  function availFor(date){ const a=availability[date]; return a ? {v:new Set(a.vehicles||[]), d:new Set(a.drivers||[])} : null; }
+  function vOk(id,date){ const a=availFor(date); if (a) return a.v.has(id); const v=vById(id); return !v || v.active!==false; }
+  function dOk(id,date){ const a=availFor(date); if (a) return a.d.has(id); const d=dById(id); return !d || d.active!==false; }
+  const defaultVehicleOf=(driverId,date) => vehicles.find(v => v.defaultDriverId===driverId && vOk(v.id,date));
+  const canModify=b => b.date >= jktToday();
+
+  /* ===== UI helpers ===== */
+  function askConfirm(text, yesLabel){
+    return new Promise(resolve => {
+      const m=$('modal'), yes=$('modalYes'), no=$('modalNo'), prev=document.activeElement;
+      $('modalText').textContent=text; yes.textContent=yesLabel||'확인'; m.hidden=false; yes.focus();
+      const onKey=e => { if (e.key==='Escape') done(false); };
+      const done=v => { m.hidden=true; yes.onclick=no.onclick=m.onclick=null; document.removeEventListener('keydown',onKey); if (prev && prev.focus) prev.focus(); resolve(v); };
+      yes.onclick=() => done(true); no.onclick=() => done(false);
+      m.onclick=e => { if (e.target===m) done(false); };
+      document.addEventListener('keydown',onKey);
+    });
+  }
+  let toastTimer;
+  function notify(text, ms){ const t=$('toast'); t.textContent=text; t.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(() => { t.hidden=true; }, ms||3000); }
+  function banner(text){ const b=$('banner'); b.textContent=text||''; b.hidden=!text; }
+  function showMsg(text, kind){ const m=$('msg'); m.textContent=text; m.className='msg '+kind; }
+
+  // Run a server call, then redraw with the data it returns.
+  async function call(fn, args, okText){
+    notify('저장 중…', 20000);
+    try { apply(await api(fn, ...args)); if (okText) notify(okText); else $('toast').hidden=true; return true; }
+    catch(e){ $('toast').hidden=true; if (e.auth) showLogin(e.message); else notify(errText(e), 4500); return false; }
+  }
+
+  /* ===== Navigation ===== */
+  function go(next){
+    view=next;
+    document.querySelectorAll('.nav button').forEach(b => b.setAttribute('aria-current', b.dataset.view===next ? 'page' : 'false'));
+    $('view-book').classList.toggle('on', next==='book');
+    $('view-board').classList.toggle('on', next==='board');
+    $('view-manage').classList.toggle('on', next==='manage');
+    $('pair').classList.toggle('off', next==='manage');
+    window.scrollTo(0,0);
+  }
+  document.querySelectorAll('.nav button').forEach(b => b.addEventListener('click', () => go(b.dataset.view)));
+
+  /* ===== Clock ===== */
+  function tick(){
+    const f=new Intl.DateTimeFormat('ko-KR',{timeZone:TZ,month:'long',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false});
+    $('clock').textContent=`자카르타 ${f.format(new Date())} (WIB) 기준`;
+    $('fDate').min=jktToday();
+    if (!me.isAdmin) $('boardDate').min=jktToday();
+  }
+  $('fDate').value=jktToday();
+  $('boardDate').value=jktToday();
+  tick(); setInterval(tick, 30000);
+
+  /* ===== Booking form ===== */
+  const usage=() => document.querySelector('input[name=usage]:checked').value;
+  function showSub(){ const u=usage(); $('subDay').hidden=u!=='day'; $('subAir').hidden=u!=='air'; $('subTime').hidden=u!=='time'; }
+  document.querySelectorAll('input[name=usage]').forEach(r => r.addEventListener('change', showSub));
+
+  function setTime(id,val){
+    const [hh,mm]=(val||'00:00').split(':'), h=$(id+'_h'), m=$(id+'_m');
+    if (![...m.options].some(o => o.value===mm)) m.add(new Option(mm, mm));
+    h.value=hh; m.value=mm; $(id).value=`${hh}:${mm}`;
+  }
+  document.querySelectorAll('.tpick').forEach(box => {
+    const id=box.dataset.for, inp=$(id);
+    const h=document.createElement('select'); h.id=id+'_h'; h.setAttribute('aria-label','시');
+    for (let i=0;i<24;i++) h.add(new Option(pad(i), pad(i)));
+    const m=document.createElement('select'); m.id=id+'_m'; m.setAttribute('aria-label','분');
+    for (let i=0;i<60;i+=10) m.add(new Option(pad(i), pad(i)));
+    const colon=document.createElement('span'); colon.textContent=':'; colon.setAttribute('aria-hidden','true');
+    box.append(h, colon, m);
+    const sync=() => { inp.value=`${h.value}:${m.value}`; };
+    h.addEventListener('change', sync); m.addEventListener('change', sync);
+    setTime(id, inp.value);
+  });
+  ['tStart_h','tStart_m'].forEach(id => $(id).addEventListener('change', () => {
+    const s=toMin($('tStart').value);
+    if (toMin($('tEnd').value)<=s) setTime('tEnd', fromMin(Math.min(s+60, 23*60+50)));
+  }));
+
+  function fillSelects(){
+    const date=$('fDate').value;
+    const uSel=$('fRequester'), dSel=$('fDriver'), vSel=$('fVehicle');
+    const uPrev=uSel.value, dPrev=dSel.value, vPrev=vSel.value;
+    const dAvail=drivers.filter(d => dOk(d.id,date)), vAvail=vehicles.filter(v => vOk(v.id,date));
+    uSel.innerHTML = users.length
+      ? '<option value="">선택하세요</option>' + users.map(u => `<option value="${esc(u.id)}">${esc(uLabel(u))}</option>`).join('')
+      : `<option value="">등록된 사용자가 없습니다${me.isAdmin?' (관리 탭에서 추가)':' (관리자에게 문의)'}</option>`;
+    dSel.innerHTML = dAvail.length
+      ? dAvail.map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')
+      : `<option value="">${drivers.length?'이 날 가능한 기사가 없습니다':'등록된 기사가 없습니다'}</option>`;
+    vSel.innerHTML = vAvail.length
+      ? vAvail.map(v => `<option value="${esc(v.id)}">${esc(v.plate)} (${esc(v.model)})</option>`).join('')
+      : `<option value="">${vehicles.length?'이 날 가능한 차량이 없습니다':'등록된 차량이 없습니다'}</option>`;
+    if (uById(uPrev)) uSel.value=uPrev;
+    if (dAvail.some(d => d.id===dPrev)) dSel.value=dPrev; else if (dAvail.length) dSel.value=dAvail[0].id;
+    if (vAvail.some(v => v.id===vPrev)) vSel.value=vPrev;
+    else if (vAvail.length) vSel.value=(defaultVehicleOf(dSel.value,date) || vAvail[0]).id;
+  }
+  $('fDate').addEventListener('change', fillSelects);
+  // User → their default driver → that driver's default vehicle. Both stay editable.
+  $('fRequester').addEventListener('change', () => {
+    const u=uById($('fRequester').value), date=$('fDate').value;
+    if (!u || !dById(u.defaultDriverId) || !dOk(u.defaultDriverId,date)) return;
+    $('fDriver').value=u.defaultDriverId;
+    $('fDriver').dispatchEvent(new Event('change'));
+  });
+  $('fDriver').addEventListener('change', () => {
+    const v=defaultVehicleOf($('fDriver').value, $('fDate').value);
+    if (v) $('fVehicle').value=v.id;
+  });
+
+  $('form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const date=$('fDate').value, type=usage();
+    if (!date) return showMsg('날짜를 선택하세요.','err');
+    if (date < jktToday()) return showMsg('지난 날짜에는 배차를 등록할 수 없습니다.','err');
+    if (!uById($('fRequester').value)) return showMsg('사용자를 선택하세요.','err');
+    if (!$('fDriver').value) return showMsg('선택할 수 있는 기사가 없습니다.','err');
+    if (!$('fVehicle').value) return showMsg('선택할 수 있는 차량이 없습니다.','err');
+    const b={ id:editingId, date, type, requesterId:$('fRequester').value, driverId:$('fDriver').value, vehicleId:$('fVehicle').value,
+      purpose:$('fPurpose').value.trim(), flight:'' };
+    if (type==='air'){ b.start=toMin($('aTime').value); b.end=Math.min(b.start+Math.round((parseFloat($('aHours').value)||4)*60),1440); b.flight=$('aFlight').value.trim(); }
+    else if (type==='time'){ b.start=toMin($('tStart').value); b.end=toMin($('tEnd').value); }
+    else { b.start=0; b.end=1440; }
+    if (b.end <= b.start) return showMsg('종료 시각이 시작 시각보다 뒤여야 합니다.','err');
+
+    const wasEdit=!!editingId;
+    $('submitBtn').disabled=true; showMsg('저장 중…','ok');
+    try {
+      apply(await api('saveBooking', b));
+      $('msg').className='msg';
+      resetEdit();
+      $('boardDate').value=date; renderBoard();
+      notify(wasEdit ? '배차를 수정했습니다.' : '배차를 등록했습니다.');
+      if (!matchMedia('(min-width:900px)').matches) go('board');
+    } catch(err){ if (err.auth) showLogin(err.message); else showMsg(errText(err),'err'); }
+    finally { $('submitBtn').disabled=false; }
+  });
+
+  function resetEdit(){
+    editingId=null;
+    $('formTitle').textContent='새 배차 등록'; $('submitBtn').textContent='배차 등록';
+    $('cancelEdit').hidden=true; $('fPurpose').value=''; $('aFlight').value='';
+    $('msg').className='msg';
+  }
+  $('cancelEdit').addEventListener('click', resetEdit);
+
+  function startEdit(id){
+    const b=bookings.find(x => x.id===id); if (!b || !canModify(b)) return;
+    editingId=id;
+    $('fDate').value=b.date; fillSelects();
+    $('fRequester').value=uById(b.requesterId) ? b.requesterId : '';
+    $('fDriver').value=b.driverId; $('fVehicle').value=b.vehicleId;
+    document.querySelector(`input[name=usage][value=${b.type}]`).checked=true; showSub();
+    if (b.type==='air'){ setTime('aTime',fromMin(b.start)); $('aHours').value=(b.end-b.start)/60; $('aFlight').value=b.flight||''; }
+    if (b.type==='time'){ setTime('tStart',fromMin(b.start)); setTime('tEnd',fromMin(b.end)); }
+    $('fPurpose').value=b.purpose||'';
+    $('formTitle').textContent='배차 수정'; $('submitBtn').textContent='수정 저장';
+    $('cancelEdit').hidden=false; $('msg').className='msg';
+    go('book');
+  }
+
+  async function removeBooking(id){
+    if (!(await askConfirm('이 배차를 삭제할까요?','삭제'))) return;
+    if (await call('deleteBooking', [id], '배차를 삭제했습니다.') && editingId===id) resetEdit();
+  }
+
+  /* ===== Board ===== */
+  function clampBoard(){
+    const t=jktToday();
+    if (!me.isAdmin && $('boardDate').value < t) $('boardDate').value=t;
+    $('prevDay').disabled = !me.isAdmin && $('boardDate').value <= t;
+  }
+  $('prevDay').addEventListener('click', () => { $('boardDate').value=addDays($('boardDate').value,-1); renderBoard(); });
+  $('nextDay').addEventListener('click', () => { $('boardDate').value=addDays($('boardDate').value,1); renderBoard(); });
+  $('today').addEventListener('click', () => { $('boardDate').value=jktToday(); renderBoard(); });
+  $('boardDate').addEventListener('change', renderBoard);
+
+  function renderBoard(){
+    clampBoard();
+    const date=$('boardDate').value, today=jktToday(), isPast=date < today;
+    $('pastNote').hidden = !(me.isAdmin && isPast);
+    const day=bookings.filter(b => b.date===date).sort((a,b) => a.start-b.start);
+    const dd=new Date(date+'T12:00:00Z');
+    $('listTitle').textContent=`${dd.getUTCMonth()+1}월 ${dd.getUTCDate()}일 · 배차 ${day.length}건`;
+    const avail=vehicles.filter(v => vOk(v.id,date)).length, used=new Set(day.map(b => b.vehicleId)).size;
+    $('usage').textContent = vehicles.length ? `차량 ${used}/${avail}대 사용` : '';
+
+    // Cards (all screens)
+    $('cards').innerHTML = day.length ? day.map(b => {
+      const v=vById(b.vehicleId), d=dById(b.driverId), u=uById(b.requesterId);
+      const memo=[b.type==='air' ? b.flight : '', b.purpose].filter(Boolean).join(' · ');
+      const when = b.type==='day' ? '<b>종일</b>' : `<b>${fromMin(b.start)}</b><span>~ ${fromMin(b.end)}</span>`;
+      return `<article class="card ${esc(b.type)}">
+        <div class="when">${when}</div>
+        <div class="what">
+          <div class="who">${esc(u ? uLabel(u) : '(삭제된 사용자)')}${b.type!=='time'?` <span class="tag ${esc(b.type)}">${typeLabel(b.type)}</span>`:''}</div>
+          <div class="line">${esc(d ? d.name : '(삭제된 기사)')} · ${v?`<span class="plate">${esc(v.plate)}</span> <span class="muted">${esc(v.model)}</span>`:'(삭제된 차량)'}</div>
+          ${memo?`<div class="memo">${esc(memo)}</div>`:''}
+        </div>
+        ${canModify(b) || me.isAdmin ? `<div class="acts">${canModify(b)?`<button type="button" class="btn sm" data-action="edit" data-id="${esc(b.id)}">수정</button>`:''}<button type="button" class="btn sm danger" data-action="delete" data-id="${esc(b.id)}">삭제</button></div>` : ''}
+      </article>`;
+    }).join('') : `<p class="empty">${loaded ? (isPast ? '이 날짜에는 배차 기록이 없습니다.' : '이 날짜에는 배차가 없습니다.') : '불러오는 중…'}</p>`;
+
+    // Timeline (wide screens)
+    let html=`<div class="tl-row head"><div class="tl-label"><small>차량</small></div><div class="tl-hours">${
+      [0,3,6,9,12,15,18,21,24].map(h => `<span style="left:${h/24*100}%">${h}시</span>`).join('')}</div></div>`;
+    vehicles.filter(v => vOk(v.id,date) || day.some(b => b.vehicleId===v.id)).forEach(v => {
+      const bars=day.filter(b => b.vehicleId===v.id).map(b => {
+        const d=dById(b.driverId), u=uById(b.requesterId);
+        const title=`${timeText(b)} · ${d?d.name:'-'}${u?' · 사용자 '+u.name:''}${b.purpose?' · '+b.purpose:''}`;
+        return `<button type="button" class="bar ${esc(b.type)}" style="left:${b.start/1440*100}%;width:${(b.end-b.start)/1440*100}%" ${canModify(b)?`data-action="edit" data-id="${esc(b.id)}"`:''} title="${esc(title)}"><b>${esc(d?d.name:'-')}</b>${b.type==='time'?'':' '+typeLabel(b.type)}</button>`;
+      }).join('');
+      html+=`<div class="tl-row"><div class="tl-label"><span class="plate">${esc(v.plate)}</span><small>${esc(v.model)}</small></div><div class="tl-track">${bars}</div></div>`;
+    });
+    $('timeline').innerHTML=html;
+  }
+
+  /* ===== Manage (admin) ===== */
+  const driverOptions=sel => '<option value="">기본 기사 없음</option>' +
+    drivers.map(d => `<option value="${esc(d.id)}"${d.id===sel?' selected':''}>${esc(d.name)}</option>`).join('');
+  const offTag=it => it.active===false ? ' <span class="tag off">기본 제외</span>' : '';
+  const activeBtn=(t,it) => `<button class="btn sm" data-action="toggle" data-table="${t}" data-id="${esc(it.id)}">${it.active===false?'기본 가용':'기본 제외'}</button>`;
+  const removeBtn=(t,it) => `<button class="btn sm danger" data-action="remove" data-table="${t}" data-id="${esc(it.id)}">삭제</button>`;
+  const defaultSel=(t,it) => `<select class="inline-select" data-action="default-driver" data-table="${t}" data-id="${esc(it.id)}" aria-label="기본 기사">${driverOptions(it.defaultDriverId)}</select>`;
+
+  function renderManage(){
+    $('vehicleList').innerHTML = vehicles.length ? vehicles.map(v =>
+      `<div class="item"><div><span class="plate">${esc(v.plate)}</span><span class="model">${esc(v.model)}</span>${offTag(v)}</div>
+        <div class="row-actions">${defaultSel('vehicles',v)}${activeBtn('vehicles',v)}${removeBtn('vehicles',v)}</div></div>`).join('')
+      : '<p class="empty">아래에서 차량을 추가하세요.</p>';
+    $('driverList').innerHTML = drivers.length ? drivers.map(d => {
+      const dv=vehicles.find(v => v.defaultDriverId===d.id);
+      return `<div class="item"><div>${esc(d.name)}${d.note?` <small class="muted">· ${esc(d.note)}</small>`:''}${offTag(d)}${dv?` <small class="muted">· 기본 차량 ${esc(dv.plate)}</small>`:''}</div>
+        <div class="row-actions">${activeBtn('drivers',d)}${removeBtn('drivers',d)}</div></div>`;
+    }).join('') : '<p class="empty">아래에서 기사를 추가하세요.</p>';
+    $('userList').innerHTML = users.length ? users.map(u =>
+      `<div class="item"><div>${esc(u.name)}${u.dept?` <small class="muted">· ${esc(u.dept)}</small>`:''}</div>
+        <div class="row-actions">${defaultSel('users',u)}${removeBtn('users',u)}</div></div>`).join('')
+      : '<p class="empty">아래에서 사용자를 추가하세요.</p>';
+  }
+
+  async function removeItem(table, id){
+    const label={vehicles:'차량', drivers:'기사', users:'사용자'}[table];
+    const field={vehicles:'vehicleId', drivers:'driverId'}[table];
+    const linked=field ? bookings.filter(b => b[field]===id && b.date>=jktToday()).length : 0;
+    const q = table==='users' ? '이 사용자를 목록에서 삭제할까요? 기존 배차 기록은 그대로 남습니다.'
+      : linked ? `이 ${label}에 예정된 배차 ${linked}건이 있습니다. 함께 삭제할까요?` : `이 ${label}을(를) 삭제할까요?`;
+    if (await askConfirm(q,'삭제')) call('deleteItem', [table, id], `${label}을(를) 삭제했습니다.`);
+  }
+  function addForm(formId, table, read){
+    $(formId).addEventListener('submit', async e => {
+      e.preventDefault();
+      const fields=read(); if (!fields) return;
+      if (await call('addItem', [table, fields], '추가했습니다.')) $(formId).reset();
+    });
+  }
+  addForm('addVehicle','vehicles', () => { const plate=$('vPlate').value.trim(), model=$('vModel').value.trim(); return plate && model ? {plate, model} : null; });
+  addForm('addDriver','drivers', () => { const name=$('dName').value.trim(); return name ? {name, note:$('dNote').value.trim()} : null; });
+  addForm('addUser','users', () => { const name=$('uName').value.trim(); return name ? {name, dept:$('uDept').value.trim()} : null; });
+
+  /* ===== Availability by date (admin) ===== */
+  function renderAvail(){
+    const t=jktToday();
+    $('avFrom').min=t;
+    if (!$('avFrom').value || $('avFrom').value<t) $('avFrom').value=t;
+    $('avTo').min=$('avFrom').value;
+    const date=$('avFrom').value, a=availFor(date);
+    const vOn=v => a ? a.v.has(v.id) : v.active!==false, dOn=d => a ? a.d.has(d.id) : d.active!==false;
+    $('avStatus').textContent=`${fmtMD(date)}: ${a?'지정됨':'지정 안 됨 · 기본 설정 적용'} · 차량 ${vehicles.filter(vOn).length}/${vehicles.length}대, 기사 ${drivers.filter(dOn).length}/${drivers.length}명 가능`;
+    if (!avDirty){
+      $('avVehicles').innerHTML=vehicles.map(v => `<label class="check"><input type="checkbox" data-avv="${esc(v.id)}"${vOn(v)?' checked':''}><span class="plate">${esc(v.plate)}</span> <small class="muted">${esc(v.model)}</small></label>`).join('') || '<p class="empty">먼저 차량을 추가하세요.</p>';
+      $('avDrivers').innerHTML=drivers.map(d => `<label class="check"><input type="checkbox" data-avd="${esc(d.id)}"${dOn(d)?' checked':''}>${esc(d.name)}</label>`).join('') || '<p class="empty">먼저 기사를 추가하세요.</p>';
+    }
+    const dates=Object.keys(availability).filter(d => d>=t).sort();
+    $('avList').innerHTML = dates.length
+      ? dates.map(d => `<button type="button" class="chip" data-action="pick-date" data-date="${esc(d)}" aria-current="${d===date}">${fmtMD(d)}</button>`).join('')
+      : '<span class="avail-status" style="margin:0">아직 지정된 날짜가 없습니다.</span>';
+  }
+  $('avFrom').addEventListener('change', () => { avDirty=false; renderAvail(); });
+  $('avTo').addEventListener('change', renderAvail);
+  $('avAll').addEventListener('click', () => { document.querySelectorAll('[data-avv],[data-avd]').forEach(c => { c.checked=true; }); avDirty=true; });
+
+  async function saveAvail(reset){
+    const t=jktToday(), from=$('avFrom').value, to=$('avTo').value||from, m=$('avMsg');
+    const say=(txt,k) => { m.textContent=txt; m.className='msg '+k; };
+    if (!from) return say('날짜를 선택하세요.','err');
+    if (from<t) return say('지난 날짜는 지정할 수 없습니다.','err');
+    if (to<from) return say('종료일이 시작일보다 앞설 수 없습니다.','err');
+    const dates=dateRange(from,to);
+    if (dates.length>92) return say('한 번에 최대 92일까지 지정할 수 있습니다.','err');
+    const vs=[...document.querySelectorAll('[data-avv]:checked')].map(c => c.dataset.avv);
+    const ds=[...document.querySelectorAll('[data-avd]:checked')].map(c => c.dataset.avd);
+    if (reset){
+      if (!(await askConfirm('선택한 날짜의 지정을 해제할까요? 기본 설정으로 돌아갑니다.','해제'))) return;
+    } else {
+      const hit=bookings.filter(b => dates.includes(b.date) && (!vs.includes(b.vehicleId) || !ds.includes(b.driverId)));
+      if (hit.length && !(await askConfirm(`이 기간에 이미 등록된 배차 ${hit.length}건이 배차 불가로 바뀌는 차량·기사를 쓰고 있습니다. 기존 배차는 그대로 두고 저장할까요?`,'저장'))) return;
+    }
+    $('avSave').disabled=$('avReset').disabled=true;
+    avDirty=false;
+    if (await call('saveAvailability', [dates, vs, ds, !!reset]))
+      say(reset ? `${dates.length}일의 지정을 해제했습니다.` : `${dates.length}일의 가용 설정을 저장했습니다.`,'ok');
+    $('avSave').disabled=$('avReset').disabled=false;
+  }
+  $('avSave').addEventListener('click', () => saveAvail(false));
+  $('avReset').addEventListener('click', () => saveAvail(true));
+
+  /* ===== Event delegation ===== */
+  document.addEventListener('click', e => {
+    const el=e.target.closest('[data-action]'); if (!el || el.tagName==='SELECT') return;
+    const {action, id, table}=el.dataset;
+    if (action==='edit') return startEdit(id);
+    if (action==='delete') return removeBooking(id);
+    if (!me.isAdmin) return;
+    if (action==='toggle'){ const it=(table==='vehicles'?vehicles:drivers).find(x => x.id===id); if (it) call('updateItem', [table, id, {active: it.active===false}], it.active===false?'기본 가용으로 바꿨습니다.':'모든 날짜에서 기본 제외했습니다.'); return; }
+    if (action==='remove') return removeItem(table, id);
+    if (action==='pick-date'){ $('avFrom').value=el.dataset.date; $('avTo').value=''; avDirty=false; renderAvail(); }
+  });
+  document.addEventListener('change', e => {
+    if (e.target.matches('[data-avv],[data-avd]')){ avDirty=true; return; }
+    const el=e.target.closest('[data-action="default-driver"]');
+    if (el && me.isAdmin){ const dr=el.value||''; call('updateItem', [el.dataset.table, el.dataset.id, {defaultDriverId: dr}], dr ? `기본 기사를 ${dById(dr)?.name||''}(으)로 지정했습니다.` : '기본 기사를 해제했습니다.'); }
+  });
+
+  /* ===== Data ===== */
+  function apply(data){
+    me={isAdmin: data.role==='admin'}; vehicles=data.vehicles; drivers=data.drivers; users=data.users;
+    bookings=data.bookings; availability=data.availability; loaded=true;
+    $('roleBadge').hidden=!me.isAdmin;
+    $('manageTab').hidden=!me.isAdmin;
+    if (!me.isAdmin && view==='manage') go('book');
+    $('formFields').disabled=false;
+    banner('');
+    tick(); fillSelects(); renderBoard();
+    if (me.isAdmin){ renderManage(); renderAvail(); }
+  }
+  async function refresh(){
+    if (!code) return showLogin();
+    try { apply(await api('getData')); }
+    catch(e){ if (e.auth) showLogin(e.message); else banner('배차 데이터를 불러오지 못했습니다. ('+errText(e)+')'); }
+  }
+  // Pick up other people's changes: every minute while open, and whenever the page comes back into view.
+  const active=() => code && $('login').hidden && $('modal').hidden;
+  setInterval(() => { if (document.visibilityState==='visible' && active()) refresh(); }, 60000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible' && active()) refresh(); });
+
+  /* ===== Access code ===== */
+  $('loginLogo').src=$('logoImg').src;
+  function showLogin(message){
+    code=''; try { localStorage.removeItem(CODE_KEY); } catch(e){}
+    $('login').hidden=false; $('logout').hidden=true;
+    const m=$('loginMsg'); if (message){ m.textContent=message; m.className='msg err'; } else m.className='msg';
+    $('code').value=''; $('code').focus();
+  }
+  $('loginForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const typed=$('code').value.trim(); if (!typed) return;
+    code=typed; $('loginBtn').disabled=true;
+    const m=$('loginMsg'); m.textContent='확인 중…'; m.className='msg ok';
+    try {
+      apply(await api('getData'));
+      try { localStorage.setItem(CODE_KEY, code); } catch(err){}
+      $('login').hidden=true; $('logout').hidden=false; m.className='msg';
+    } catch(err){ code=''; m.textContent=errText(err); m.className='msg err'; }
+    finally { $('loginBtn').disabled=false; }
+  });
+  $('logout').addEventListener('click', async () => {
+    if (!(await askConfirm('로그아웃할까요? 다음에 다시 접속 코드를 입력해야 합니다.','로그아웃'))) return;
+    vehicles=[]; drivers=[]; users=[]; bookings=[]; availability={}; me={isAdmin:false};
+    $('roleBadge').hidden=true; $('manageTab').hidden=true; go('book');
+    showLogin();
+  });
+
+  showSub(); renderBoard();
+  if (code){ $('logout').hidden=false; refresh(); } else showLogin();
+})();
+</script>
+</body>
+</html>
