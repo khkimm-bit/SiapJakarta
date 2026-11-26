@@ -222,17 +222,19 @@ fieldset:disabled{opacity:.55}
 .bar.time{background:var(--time-soft);border-left:4px solid var(--time)}
 
 /* ===== Manage ===== */
-.manage{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:8px}
-.manage .panel + .panel{margin-top:0}
+.mpane{display:grid;gap:8px;align-items:start}
+.mpane .panel + .panel{margin-top:0}
+@media (min-width:900px){ .mpane{grid-template-columns:1fr 1fr} #manageTabs{max-width:420px} }
+.checks{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:12px;margin-top:4px}
 .item{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;padding:6px 0;font-size:.85rem;border-bottom:1px solid var(--line)}
 .item:last-child{border-bottom:0}
 .item .model{margin-left:6px}
 .row-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;margin-left:auto}
 .add{display:grid;grid-template-columns:1fr;gap:6px;margin-top:10px}
 @media (min-width:480px){.add{grid-template-columns:1fr 1fr auto}}
-.avail-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:10px}
 .check{display:flex;align-items:center;gap:6px;min-height:32px;border-bottom:1px solid var(--line);cursor:pointer;font-size:.82rem}
 .check input{width:17px;height:17px;margin:0;flex:none}
+.check.changed{background:var(--time-soft)}
 .avail-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .avail-status{font-size:.78rem;color:var(--muted);margin:6px 0 0}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
@@ -349,12 +351,18 @@ fieldset:disabled{opacity:.55}
     </section>
   </div>
 
-  <!-- ===== Manage (admin only) ===== -->
+  <!-- ===== Manage (admin only): one tab each for vehicles, drivers and users ===== -->
   <section class="view" id="view-manage">
-    <div class="manage">
+    <div class="modes" id="manageTabs" role="group" aria-label="관리 항목">
+      <button type="button" data-mtab="vehicles" aria-pressed="true">차량</button>
+      <button type="button" data-mtab="drivers" aria-pressed="false">운전기사</button>
+      <button type="button" data-mtab="users" aria-pressed="false">사용자</button>
+    </div>
+
+    <div class="mpane" data-pane="vehicles">
       <div class="panel">
-        <h2>차량</h2>
-        <p class="hint" style="margin:-6px 0 6px">기본 기사를 정해 두면 배차 등록 때 그 기사를 고르면 이 차량이 자동으로 선택됩니다.</p>
+        <h2>차량 목록</h2>
+        <p class="hint" style="margin:-6px 0 6px">‘기본 제외’는 모든 날짜에서 빠집니다. 기본 기사를 정해 두면 배차 등록 때 그 기사를 고르면 이 차량이 자동으로 선택됩니다.</p>
         <div id="vehicleList"></div>
         <form class="add" id="addVehicle">
           <input type="text" id="vPlate" placeholder="번호판 (예: B 1234 ABC)" aria-label="번호판" required autocomplete="off">
@@ -362,8 +370,30 @@ fieldset:disabled{opacity:.55}
           <button class="btn" type="submit">차량 추가</button>
         </form>
       </div>
+        <div class="panel" data-av="vehicles">
+          <h2>일자별 가용 차량</h2>
+          <p class="hint" style="margin-top:-4px">따로 정하지 않은 날짜는 위 목록의 기본 설정을 따릅니다. 기간을 고르고, 그 기간에 쓸 수 있는 차량만 체크해 저장하세요.</p>
+          <div class="row2" style="margin-top:8px">
+            <div><label class="f">시작일</label><input type="date" data-role="from" aria-label="차량 가용 시작일"></div>
+            <div><label class="f">종료일 (하루면 비워 두기)</label><input type="date" data-role="to" aria-label="차량 가용 종료일"></div>
+          </div>
+          <p class="avail-status" data-role="status"></p>
+          <div class="checks" data-role="box"></div>
+          <div class="avail-actions">
+            <button type="button" class="btn solid" data-role="save" disabled>저장</button>
+            <button type="button" class="btn" data-role="undo" disabled>변경 취소</button>
+            <button type="button" class="btn danger" data-role="reset">이 기간 지정 해제</button>
+          </div>
+          <div class="msg" data-role="msg" role="status"></div>
+          <p class="avail-status" style="margin-top:12px">차량 설정이 있는 날짜</p>
+          <div class="chips" data-role="list"></div>
+        </div>
+    </div>
+
+    <div class="mpane" data-pane="drivers" hidden>
       <div class="panel">
-        <h2>운전기사</h2>
+        <h2>운전기사 목록</h2>
+        <p class="hint" style="margin:-6px 0 6px">‘기본 제외’는 모든 날짜에서 빠집니다.</p>
         <div id="driverList"></div>
         <form class="add" id="addDriver">
           <input type="text" id="dName" placeholder="이름" aria-label="이름" required autocomplete="off">
@@ -371,8 +401,29 @@ fieldset:disabled{opacity:.55}
           <button class="btn" type="submit">기사 추가</button>
         </form>
       </div>
+        <div class="panel" data-av="drivers">
+          <h2>일자별 가용 기사</h2>
+          <p class="hint" style="margin-top:-4px">따로 정하지 않은 날짜는 위 목록의 기본 설정을 따릅니다. 기간을 고르고, 그 기간에 쓸 수 있는 기사만 체크해 저장하세요.</p>
+          <div class="row2" style="margin-top:8px">
+            <div><label class="f">시작일</label><input type="date" data-role="from" aria-label="기사 가용 시작일"></div>
+            <div><label class="f">종료일 (하루면 비워 두기)</label><input type="date" data-role="to" aria-label="기사 가용 종료일"></div>
+          </div>
+          <p class="avail-status" data-role="status"></p>
+          <div class="checks" data-role="box"></div>
+          <div class="avail-actions">
+            <button type="button" class="btn solid" data-role="save" disabled>저장</button>
+            <button type="button" class="btn" data-role="undo" disabled>변경 취소</button>
+            <button type="button" class="btn danger" data-role="reset">이 기간 지정 해제</button>
+          </div>
+          <div class="msg" data-role="msg" role="status"></div>
+          <p class="avail-status" style="margin-top:12px">기사 설정이 있는 날짜</p>
+          <div class="chips" data-role="list"></div>
+        </div>
+    </div>
+
+    <div class="mpane" data-pane="users" hidden>
       <div class="panel">
-        <h2>사용자</h2>
+        <h2>사용자 목록</h2>
         <p class="hint" style="margin:-6px 0 6px">기본 기사를 정해 두면 배차 등록 때 사용자를 고르면 기사와 그 기사의 기본 차량이 자동으로 선택됩니다.</p>
         <div id="userList"></div>
         <form class="add" id="addUser">
@@ -381,28 +432,6 @@ fieldset:disabled{opacity:.55}
           <button class="btn" type="submit">사용자 추가</button>
         </form>
       </div>
-    </div>
-
-    <div class="panel" style="margin-top:14px">
-      <h2>일자별 가용 차량·기사</h2>
-      <p class="hint" style="margin-top:0">따로 지정하지 않은 날짜는 위 목록의 기본 설정을 따릅니다(‘기본 제외’ 차량·기사는 빠짐). 날짜를 지정하면 그 날짜는 여기서 체크한 차량·기사만 배차할 수 있습니다.</p>
-      <div class="row2" style="margin-top:14px;max-width:460px">
-        <div><label class="f" for="avFrom">날짜 (시작일)</label><input type="date" id="avFrom"></div>
-        <div><label class="f" for="avTo">종료일 (기간 적용 시)</label><input type="date" id="avTo"></div>
-      </div>
-      <p class="avail-status" id="avStatus"></p>
-      <div class="avail-grid">
-        <div><h3>차량</h3><div id="avVehicles"></div></div>
-        <div><h3>운전기사</h3><div id="avDrivers"></div></div>
-      </div>
-      <div class="avail-actions">
-        <button type="button" class="btn solid" id="avSave">가용 설정 저장</button>
-        <button type="button" class="btn" id="avAll">모두 체크</button>
-        <button type="button" class="btn danger" id="avReset">지정 해제 (기본 설정으로)</button>
-      </div>
-      <div class="msg" id="avMsg" role="status"></div>
-      <p class="avail-status" style="margin-top:16px">지정된 날짜</p>
-      <div class="chips" id="avList"></div>
     </div>
   </section>
 </main>
@@ -485,16 +514,17 @@ fieldset:disabled{opacity:.55}
   /* ===== State ===== */
   let me={email:'', isAdmin:false}, loaded=false;
   let vehicles=[], drivers=[], users=[], bookings=[], availability={};
-  let editingId=null, avDirty=false, view='book';
+  let editingId=null, view='book';
 
   /* ===== Lookups & rules ===== */
   const vById=id => vehicles.find(v => v.id===id);
   const dById=id => drivers.find(d => d.id===id);
   const uById=id => users.find(u => u.id===id);
   const uLabel=u => u.name + (u.dept ? ' · '+u.dept : '');
-  function availFor(date){ const a=availability[date]; return a ? {v:new Set(a.vehicles||[]), d:new Set(a.drivers||[])} : null; }
-  function vOk(id,date){ const a=availFor(date); if (a) return a.v.has(id); const v=vById(id); return !v || v.active!==false; }
-  function dOk(id,date){ const a=availFor(date); if (a) return a.d.has(id); const d=dById(id); return !d || d.active!==false; }
+  // Vehicles and drivers are set per date independently; null means that kind follows the defaults.
+  function listFor(kind,date){ const a=availability[date]; return a && a[kind] ? a[kind] : null; }
+  function vOk(id,date){ const l=listFor('vehicles',date); if (l) return l.includes(id); const v=vById(id); return !v || v.active!==false; }
+  function dOk(id,date){ const l=listFor('drivers',date); if (l) return l.includes(id); const d=dById(id); return !d || d.active!==false; }
   const defaultVehicleOf=(driverId,date) => vehicles.find(v => v.defaultDriverId===driverId && vOk(v.id,date));
   const canModify=b => b.date >= jktToday();
 
@@ -915,52 +945,101 @@ fieldset:disabled{opacity:.55}
   addForm('addDriver','drivers', () => { const name=$('dName').value.trim(); return name ? {name, note:$('dNote').value.trim()} : null; });
   addForm('addUser','users', () => { const name=$('uName').value.trim(); return name ? {name, dept:$('uDept').value.trim()} : null; });
 
-  /* ===== Availability by date (admin) ===== */
-  function renderAvail(){
-    const t=jktToday();
-    $('avFrom').min=t;
-    if (!$('avFrom').value || $('avFrom').value<t) $('avFrom').value=t;
-    $('avTo').min=$('avFrom').value;
-    const date=$('avFrom').value, a=availFor(date);
-    const vOn=v => a ? a.v.has(v.id) : v.active!==false, dOn=d => a ? a.d.has(d.id) : d.active!==false;
-    $('avStatus').textContent=`${fmtMD(date)}: ${a?'지정됨':'지정 안 됨 · 기본 설정 적용'} · 차량 ${vehicles.filter(vOn).length}/${vehicles.length}대, 기사 ${drivers.filter(dOn).length}/${drivers.length}명 가능`;
-    if (!avDirty){
-      $('avVehicles').innerHTML=vehicles.map(v => `<label class="check"><input type="checkbox" data-avv="${esc(v.id)}"${vOn(v)?' checked':''}><span class="plate">${esc(v.plate)}</span> <small class="muted">${esc(v.model)}</small></label>`).join('') || '<p class="empty">먼저 차량을 추가하세요.</p>';
-      $('avDrivers').innerHTML=drivers.map(d => `<label class="check"><input type="checkbox" data-avd="${esc(d.id)}"${dOn(d)?' checked':''}>${esc(d.name)}</label>`).join('') || '<p class="empty">먼저 기사를 추가하세요.</p>';
-    }
-    const dates=Object.keys(availability).filter(d => d>=t).sort();
-    $('avList').innerHTML = dates.length
-      ? dates.map(d => `<button type="button" class="chip" data-action="pick-date" data-date="${esc(d)}" aria-current="${d===date}">${fmtMD(d)}</button>`).join('')
-      : '<span class="avail-status" style="margin:0">아직 지정된 날짜가 없습니다.</span>';
-  }
-  $('avFrom').addEventListener('change', () => { avDirty=false; renderAvail(); });
-  $('avTo').addEventListener('change', renderAvail);
-  $('avAll').addEventListener('click', () => { document.querySelectorAll('[data-avv],[data-avd]').forEach(c => { c.checked=true; }); avDirty=true; });
+  /* ===== Manage tabs ===== */
+  let mtab='vehicles';
+  document.querySelectorAll('#manageTabs button').forEach(b => b.addEventListener('click', () => {
+    mtab=b.dataset.mtab;
+    document.querySelectorAll('#manageTabs button').forEach(x => x.setAttribute('aria-pressed', x===b));
+    document.querySelectorAll('.mpane').forEach(p => { p.hidden = p.dataset.pane!==mtab; });
+  }));
 
-  async function saveAvail(reset){
-    const t=jktToday(), from=$('avFrom').value, to=$('avTo').value||from, m=$('avMsg');
-    const say=(txt,k) => { m.textContent=txt; m.className='msg '+k; };
-    if (!from) return say('날짜를 선택하세요.','err');
-    if (from<t) return say('지난 날짜는 지정할 수 없습니다.','err');
-    if (to<from) return say('종료일이 시작일보다 앞설 수 없습니다.','err');
-    const dates=dateRange(from,to);
-    if (dates.length>92) return say('한 번에 최대 92일까지 지정할 수 있습니다.','err');
-    const vs=[...document.querySelectorAll('[data-avv]:checked')].map(c => c.dataset.avv);
-    const ds=[...document.querySelectorAll('[data-avd]:checked')].map(c => c.dataset.avd);
-    if (reset){
-      if (!(await askConfirm('선택한 날짜의 지정을 해제할까요? 기본 설정으로 돌아갑니다.','해제'))) return;
-    } else {
-      const hit=bookings.filter(b => dates.includes(b.date) && (!vs.includes(b.vehicleId) || !ds.includes(b.driverId)));
-      if (hit.length && !(await askConfirm(`이 기간에 이미 등록된 배차 ${hit.length}건이 배차 불가로 바뀌는 차량·기사를 쓰고 있습니다. 기존 배차는 그대로 두고 저장할까요?`,'저장'))) return;
-    }
-    $('avSave').disabled=$('avReset').disabled=true;
-    avDirty=false;
-    if (await call('saveAvailability', [dates, vs, ds, !!reset]))
-      say(reset ? `${dates.length}일의 지정을 해제했습니다.` : `${dates.length}일의 가용 설정을 저장했습니다.`,'ok');
-    $('avSave').disabled=$('avReset').disabled=false;
+  /* ===== Availability by date (admin): a separate panel for vehicles and for drivers =====
+     Saving writes only the boxes that were changed, for every date in the range;
+     boxes left untouched keep each date's existing setting. */
+  const KINDS={vehicles:{items:() => vehicles, label:'차량'}, drivers:{items:() => drivers, label:'기사'}};
+  const avChanges={vehicles:{}, drivers:{}};
+  const avEl=(kind, role) => document.querySelector(`[data-av="${kind}"] [data-role="${role}"]`);
+  const defaultIds=kind => KINDS[kind].items().filter(x => x.active!==false).map(x => x.id);
+  const effective=(kind,date) => new Set(listFor(kind,date) || defaultIds(kind));
+  function avRange(kind){
+    const t=jktToday(); let from=avEl(kind,'from').value, to=avEl(kind,'to').value || from;
+    if (!from || from<t) from=t;
+    if (to<from) to=from;
+    return dateRange(from,to);
   }
-  $('avSave').addEventListener('click', () => saveAvail(false));
-  $('avReset').addEventListener('click', () => saveAvail(true));
+  const rangeText=dates => fmtMD(dates[0]) + (dates.length>1 ? '–'+fmtMD(dates[dates.length-1]) : '');
+
+  function renderAvail(){ Object.keys(KINDS).forEach(renderAvailKind); }
+  function renderAvailKind(kind){
+    const t=jktToday(), from=avEl(kind,'from'), to=avEl(kind,'to');
+    from.min=t; if (!from.value || from.value<t) from.value=t;
+    to.min=from.value;
+    const K=KINDS[kind], items=K.items(), dates=avRange(kind), sets=dates.map(d => effective(kind,d));
+    const ch=avChanges[kind], n=Object.keys(ch).length;
+    const setDays=dates.filter(d => listFor(kind,d)).length;
+    let mixedAny=false;
+    avEl(kind,'box').innerHTML = items.map(x => {
+      const on=sets.filter(st => st.has(x.id)).length, c=ch[x.id];
+      const checked = c!==undefined ? c : on===sets.length;
+      const mixed = c===undefined && on>0 && on<sets.length; if (mixed) mixedAny=true;
+      const name = kind==='vehicles' ? `<span class="plate">${esc(x.plate)}</span>` : esc(x.name);
+      return `<label class="check${c!==undefined?' changed':''}"><input type="checkbox" data-av-kind="${kind}" data-id="${esc(x.id)}"${checked?' checked':''}${mixed?' data-mixed="1"':''}>${name}</label>`;
+    }).join('') || `<p class="empty">먼저 ${K.label}을(를) 추가하세요.</p>`;
+    avEl(kind,'box').querySelectorAll('[data-mixed]').forEach(c => { c.indeterminate=true; });
+    avEl(kind,'status').textContent = `${rangeText(dates)} (${dates.length}일) · `
+      + (setDays ? (setDays===dates.length ? '지정됨' : `${setDays}일 지정됨`) : '기본 설정 적용')
+      + (mixedAny ? ' · – 는 날짜마다 다른 항목' : '');
+    avEl(kind,'save').disabled = avEl(kind,'undo').disabled = !n;
+    avEl(kind,'save').textContent = n ? `저장 (${n}개 변경)` : '저장';
+    const list=Object.keys(availability).filter(d => d>=t && listFor(kind,d)).sort();
+    avEl(kind,'list').innerHTML = list.length
+      ? list.map(d => `<button type="button" class="chip" data-action="pick-date" data-kind="${kind}" data-date="${esc(d)}" aria-current="${dates.length===1 && d===dates[0]}">${fmtMD(d)}</button>`).join('')
+      : '<span class="avail-status" style="margin:0">없음</span>';
+  }
+  function clearKind(kind){ avChanges[kind]={}; avEl(kind,'msg').className='msg'; }
+  Object.keys(KINDS).forEach(kind => {
+    ['from','to'].forEach(r => avEl(kind,r).addEventListener('change', () => { clearKind(kind); renderAvailKind(kind); }));
+    avEl(kind,'undo').addEventListener('click', () => { clearKind(kind); renderAvailKind(kind); });
+    avEl(kind,'save').addEventListener('click', () => saveKind(kind));
+    avEl(kind,'reset').addEventListener('click', () => resetKind(kind));
+  });
+
+  // Rows for the server: this kind changes, the other kind is sent back as it is.
+  function rowsFor(kind, dates, nextList){
+    const def=defaultIds(kind);
+    return dates.map(date => {
+      const row={date, vehicles:listFor('vehicles',date), drivers:listFor('drivers',date)};
+      const next=nextList(date);
+      row[kind] = next===null || (next.length===def.length && def.every(id => next.includes(id))) ? null : next;
+      return row;
+    });
+  }
+  async function send(kind, rows, lost, okText){
+    const field = kind==='vehicles' ? 'vehicleId' : 'driverId';
+    const hit=bookings.filter(b => lost.has(b[field]+'|'+b.date));
+    if (hit.length && !(await askConfirm(`이 기간에 이미 등록된 배차 ${hit.length}건이 배차 불가로 바뀌는 ${KINDS[kind].label}을(를) 쓰고 있습니다. 기존 배차는 그대로 두고 저장할까요?`,'저장'))) return;
+    avEl(kind,'save').disabled=true;
+    if (await call('saveAvailability', [rows])){ clearKind(kind); renderAvailKind(kind); const m=avEl(kind,'msg'); m.textContent=okText; m.className='msg ok'; }
+    else renderAvailKind(kind);
+  }
+  function saveKind(kind){
+    const dates=avRange(kind), ch=avChanges[kind], lost=new Set();
+    const rows=rowsFor(kind, dates, date => {
+      const st=effective(kind,date);
+      Object.entries(ch).forEach(([id,on]) => { if (on) st.add(id); else { if (st.has(id)) lost.add(id+'|'+date); st.delete(id); } });
+      return [...st];
+    });
+    send(kind, rows, lost, `${rangeText(dates)} ${KINDS[kind].label} 설정을 저장했습니다.`);
+  }
+  async function resetKind(kind){
+    const dates=avRange(kind), K=KINDS[kind];
+    if (!dates.some(d => listFor(kind,d))) return notify(`이 기간에는 따로 정한 ${K.label} 설정이 없습니다.`);
+    if (!(await askConfirm(`${rangeText(dates)}의 ${K.label} 지정을 해제하고 기본 설정으로 돌릴까요?`,'해제'))) return;
+    const def=new Set(defaultIds(kind)), lost=new Set();
+    dates.forEach(d => effective(kind,d).forEach(id => { if (!def.has(id)) lost.add(id+'|'+d); }));
+    clearKind(kind);
+    send(kind, rowsFor(kind, dates, () => null), lost, `${rangeText(dates)} ${K.label} 설정을 기본으로 돌렸습니다.`);
+  }
 
   /* ===== Event delegation ===== */
   document.addEventListener('click', e => {
@@ -972,10 +1051,12 @@ fieldset:disabled{opacity:.55}
     if (!me.isAdmin) return;
     if (action==='toggle'){ const it=(table==='vehicles'?vehicles:drivers).find(x => x.id===id); if (it) call('updateItem', [table, id, {active: it.active===false}], it.active===false?'기본 가용으로 바꿨습니다.':'모든 날짜에서 기본 제외했습니다.'); return; }
     if (action==='remove') return removeItem(table, id);
-    if (action==='pick-date'){ $('avFrom').value=el.dataset.date; $('avTo').value=''; avDirty=false; renderAvail(); }
+    if (action==='pick-date'){ const k=el.dataset.kind; avEl(k,'from').value=el.dataset.date; avEl(k,'to').value=''; clearKind(k); renderAvailKind(k); }
   });
   document.addEventListener('change', e => {
-    if (e.target.matches('[data-avv],[data-avd]')){ avDirty=true; return; }
+    if (e.target.matches('[data-av-kind]')){
+      const kind=e.target.dataset.avKind; avChanges[kind][e.target.dataset.id]=e.target.checked; renderAvailKind(kind); return;
+    }
     const el=e.target.closest('[data-action="default-driver"]');
     if (el && me.isAdmin){ const dr=el.value||''; call('updateItem', [el.dataset.table, el.dataset.id, {defaultDriverId: dr}], dr ? `기본 기사를 ${dById(dr)?.name||''}(으)로 지정했습니다.` : '기본 기사를 해제했습니다.'); }
   });
