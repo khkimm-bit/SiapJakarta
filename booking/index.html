@@ -329,9 +329,9 @@ table.wk{width:100%;min-width:700px;border-collapse:collapse;table-layout:fixed;
 
           <label class="f">사용 시간</label>
           <div class="seg" role="radiogroup">
-            <input type="radio" name="usage" id="uDay" value="day" checked><label for="uDay">종일</label>
-            <input type="radio" name="usage" id="uAir" value="air"><label for="uAir">공항픽업</label>
-            <input type="radio" name="usage" id="uTime" value="time"><label for="uTime">시간 지정</label>
+            <input type="radio" name="usage" id="uDay" value="day" checked><label for="uDay">Seharian</label>
+            <input type="radio" name="usage" id="uAir" value="air"><label for="uAir">Bandara</label>
+            <input type="radio" name="usage" id="uTime" value="time"><label for="uTime">Jam tertentu</label>
           </div>
 
           <div class="sub" id="subDay">
@@ -529,8 +529,9 @@ table.wk{width:100%;min-width:700px;border-collapse:collapse;table-layout:fixed;
   const addDays=(iso,n) => { const d=new Date(iso+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); };
   const fmtMD=iso => { const d=new Date(iso+'T12:00:00Z'); return `${d.getUTCMonth()+1}/${d.getUTCDate()}`; };
   const dateRange=(from,to) => { const out=[]; for (let d=from; d<=to && out.length<93; d=addDays(d,1)) out.push(d); return out; };
-  const typeLabel=t => ({day:'종일', air:'공항', time:'시간 지정'})[t] || t;
-  const timeText=b => b.type==='day' ? '종일' : `${fromMin(b.start)}–${fromMin(b.end)}`;
+  // Usage types and weekdays are shown in Indonesian.
+  const typeLabel=t => ({day:'Seharian', air:'Bandara', time:'Jam tertentu'})[t] || t;
+  const timeText=b => b.type==='day' ? 'Seharian' : `${fromMin(b.start)}–${fromMin(b.end)}`;
 
   // Calls the Apps Script API. text/plain avoids a CORS preflight; the server returns the full data set after every change.
   const CODE_KEY='bmk-access-code';
@@ -616,8 +617,10 @@ table.wk{width:100%;min-width:700px;border-collapse:collapse;table-layout:fixed;
 
   /* ===== Clock ===== */
   function tick(){
-    const f=new Intl.DateTimeFormat('ko-KR',{timeZone:TZ,month:'long',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false});
-    $('clock').textContent=`자카르타 ${f.format(new Date())} (WIB) 기준`;
+    const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:TZ,month:'numeric',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false})
+      .formatToParts(new Date()).map(x => [x.type, x.value]));
+    const wd={Sun:'Min',Mon:'Sen',Tue:'Sel',Wed:'Rab',Thu:'Kam',Fri:'Jum',Sat:'Sab'}[p.weekday];
+    $('clock').textContent=`자카르타 ${p.month}월 ${p.day}일 (${wd}) ${p.hour==='24'?'00':p.hour}:${p.minute} (WIB) 기준`;
     $('fDate').min=jktToday();
     if (!me.isAdmin) $('boardDate').min=jktToday();
   }
@@ -809,7 +812,7 @@ table.wk{width:100%;min-width:700px;border-collapse:collapse;table-layout:fixed;
   }
 
   /* ===== Board: day / week / month ===== */
-  const DOW=['일','월','화','수','목','금','토'];
+  const DOW=['Min','Sen','Sel','Rab','Kam','Jum','Sab'];   // Minggu, Senin, … Sabtu
   const dowOf=iso => new Date(iso+'T12:00:00Z').getUTCDay();
   const weekStart=iso => addDays(iso, -((dowOf(iso)+6)%7));            // weeks start on Monday
   const monthStart=iso => iso.slice(0,8)+'01';
@@ -849,7 +852,7 @@ table.wk{width:100%;min-width:700px;border-collapse:collapse;table-layout:fixed;
   function cardHtml(b){
     const v=vById(b.vehicleId), d=dById(b.driverId), u=uById(b.requesterId);
     const memo=[b.type==='air' ? b.flight : '', b.purpose].filter(Boolean).join(' · ');
-    const when = b.type==='day' ? '<b>종일</b>' : `<b>${fromMin(b.start)}</b><span>~ ${fromMin(b.end)}</span>`;
+    const when = b.type==='day' ? '<b>Seharian</b>' : `<b>${fromMin(b.start)}</b><span>~ ${fromMin(b.end)}</span>`;
     if (b._pending) return `<article class="card ${esc(b.type)} pending">
       <div class="when">${when}</div>
       <div class="what"><div class="pair">
@@ -859,7 +862,7 @@ table.wk{width:100%;min-width:700px;border-collapse:collapse;table-layout:fixed;
       <div class="when">${when}</div>
       <div class="what">
         <div class="pair">
-          <div class="who">${esc(u ? uLabel(u) : '(삭제된 사용자)')}${b.type==='air'?' <span class="tag air">공항</span>':''}${b.groupId?` <span class="tag range">${groupRange(b)}</span>`:''}</div>
+          <div class="who">${esc(u ? uLabel(u) : '(삭제된 사용자)')}${b.type==='air'?' <span class="tag air">Bandara</span>':''}${b.groupId?` <span class="tag range">${groupRange(b)}</span>`:''}</div>
           ${v?`<span class="plate">${esc(v.plate)}</span>`:'<span class="model">(삭제된 차량)</span>'}
           <div class="drv">${esc(d ? d.name : '(삭제된 기사)')}</div>
           <div class="model">${v?esc(v.model):''}</div>
@@ -902,7 +905,7 @@ table.wk{width:100%;min-width:700px;border-collapse:collapse;table-layout:fixed;
     vehicles.filter(v => vOk(v.id,date) || day.some(b => b.vehicleId===v.id)).forEach(v => {
       const bars=day.filter(b => b.vehicleId===v.id).map(b => {
         const d=dById(b.driverId), u=uById(b.requesterId);
-        const memo=[b.type==='air' ? (b.flight ? '공항 '+b.flight : '공항') : '', b.purpose].filter(Boolean).join(' · ');
+        const memo=[b.type==='air' ? (b.flight ? 'Bandara '+b.flight : 'Bandara') : '', b.purpose].filter(Boolean).join(' · ');
         const title=`${timeText(b)} · 사용자 ${u?u.name:'-'} · 기사 ${d?d.name:'-'}${memo?' · '+memo:''}`;
         const left=pos(b.start), width=pos(b.end)-left;
         return `<button type="button" class="bar ${esc(b.type)}${b._pending?' pending':''}" style="left:${left}%;width:${width}%" ${canModify(b) && !b._pending?`data-action="edit" data-id="${esc(b.id)}"`:''} title="${esc(title)}">
@@ -943,10 +946,10 @@ table.wk{width:100%;min-width:700px;border-collapse:collapse;table-layout:fixed;
       return `<td class="${cls}">${list.map(b => {
         const dr=dById(b.driverId), u=uById(b.requesterId);
         const editable=canModify(b) && !b._pending;
-        const time=b.type==='day' ? '종일' : `${fromMin(b.start)}–${fromMin(b.end)}`;
+        const time=b.type==='day' ? 'Seharian' : `${fromMin(b.start)}–${fromMin(b.end)}`;
         const tip=`${time} · ${u?u.name:''} · ${dr?dr.name:''}${b.flight?' · '+b.flight:''}${b.purpose?' · '+b.purpose:''}`;
         return `<button type="button" class="wk-item ${esc(b.type)}${b._pending?' pending':''}" ${editable?`data-action="edit" data-id="${esc(b.id)}"`:''} title="${esc(tip)}">
-          <span class="t">${time}${b.type==='air'?' 공항':''}</span><span>${esc(u?u.name:'-')}</span><span class="muted">${esc(dr?dr.name:'-')}</span>${b.flight||b.purpose?`<span class="wk-memo">${esc([b.flight,b.purpose].filter(Boolean).join(' · '))}</span>`:''}</button>`;
+          <span class="t">${time}${b.type==='air'?' Bandara':''}</span><span>${esc(u?u.name:'-')}</span><span class="muted">${esc(dr?dr.name:'-')}</span>${b.flight||b.purpose?`<span class="wk-memo">${esc([b.flight,b.purpose].filter(Boolean).join(' · '))}</span>`:''}</button>`;
       }).join('')}</td>`;
     }).join('')}</tr>`).join('');
     $('weekGrid').innerHTML = head + `<tbody>${body || `<tr><td colspan="8" class="empty">표시할 차량이 없습니다.</td></tr>`}</tbody>`;
@@ -963,14 +966,14 @@ table.wk{width:100%;min-width:700px;border-collapse:collapse;table-layout:fixed;
     $('listTitle').textContent=`${first.slice(0,4)}년 ${Number(first.slice(5,7))}월 · 배차 ${total}건`;
     $('usage').textContent='날짜를 누르면 그날 배차를 봅니다';
     if (!loaded){ $('cards').innerHTML='<p class="empty">불러오는 중…</p>'; return; }
-    const head=['월','화','수','목','금','토','일'].map(w => `<div class="dow${w==='일'?' sun':''}">${w}</div>`).join('');
+    const head=['Sen','Sel','Rab','Kam','Jum','Sab','Min'].map(w => `<div class="dow${w==='Min'?' sun':''}">${w}</div>`).join('');
     const cells=days.map(d => {
       const list=dayList(d), cls=['cell'];
       if (d.slice(0,7)!==month) cls.push('out');
       if (d<today) cls.push('past');
       if (d===today) cls.push('today');
       if (dowOf(d)===0) cls.push('sun');
-      const names=list.slice(0,3).map(b => { const u=uById(b.requesterId); return `<span class="nm">${b.type==='day'?'종일':fromMin(b.start)} ${esc(u?u.name:'')}</span>`; }).join('');
+      const names=list.slice(0,3).map(b => { const u=uById(b.requesterId); return `<span class="nm">${b.type==='day'?'Seharian':fromMin(b.start)} ${esc(u?u.name:'')}</span>`; }).join('');
       const more=list.length>3 ? `<span class="nm muted">+${list.length-3}건</span>` : '';
       return `<button type="button" class="${cls.join(' ')}" data-action="pick-day" data-date="${d}" aria-label="${mdw(d)} 배차 ${list.length}건">
         <span class="num">${Number(d.slice(8))}</span>
