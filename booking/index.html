@@ -232,19 +232,25 @@ table.wk{width:100%;min-width:700px;border-collapse:collapse;table-layout:fixed;
 .wk-item.pending{opacity:.6}
 .wk-item span{display:block;overflow-wrap:anywhere}
 .wk-item .t{font-weight:700}
+.wk-item .wk-memo{margin-top:1px;padding-top:2px;border-top:1px dashed var(--line);color:var(--muted);font-size:.68rem}
 .timeline-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin-top:14px}
 .timeline{min-width:720px}
-.tl-row{display:grid;grid-template-columns:140px 1fr;border-bottom:1px solid var(--line);min-height:52px}
+.tl-row{display:grid;grid-template-columns:120px 1fr;border-bottom:1px solid var(--line);min-height:64px}
 .tl-row:last-child{border-bottom:0}
 .tl-row.head{min-height:28px}
 .tl-label{padding:8px 10px;border-right:1px solid var(--line);display:flex;flex-direction:column;justify-content:center;gap:2px}
 .tl-label small{color:var(--muted);font-size:.76rem}
-.tl-track{position:relative;background-image:repeating-linear-gradient(90deg,var(--line) 0 1px,transparent 1px calc(100%/8))}
+.tl-track{position:relative}
+.tl-row.off .tl-label{opacity:.6}
 .tl-hours{position:relative;height:28px}
 .tl-hours span{position:absolute;top:6px;font-size:.74rem;color:var(--muted);transform:translateX(-50%)}
 .tl-hours span:first-child{transform:none;left:4px!important}
 .tl-hours span:last-child{transform:translateX(-100%);left:calc(100% - 4px)!important}
-.bar{position:absolute;top:7px;bottom:7px;border-radius:7px;padding:3px 8px;font-size:.74rem;line-height:1.3;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;border:0;text-align:left;color:var(--ink);cursor:default}
+.bar{position:absolute;top:5px;bottom:5px;border-radius:7px;padding:3px 7px;font-size:.72rem;line-height:1.3;overflow:hidden;border:0;text-align:left;color:var(--ink);cursor:default}
+.bar span{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.bar .memo-l{color:var(--muted);font-size:.68rem}
+.bar i{font-style:normal;color:var(--muted)}
+.bar.pending{opacity:.6}
 .bar[data-action]{cursor:pointer}
 .bar.day{background:var(--day-soft);border-left:4px solid var(--day)}
 .bar.air{background:var(--air-soft);border-left:4px solid var(--air)}
@@ -352,7 +358,7 @@ table.wk{width:100%;min-width:700px;border-collapse:collapse;table-layout:fixed;
           <input type="text" id="fPurpose" placeholder="예: 스나얀 사무실 → 쿠닝안 거래처 미팅" autocomplete="off">
 
           <button type="submit" class="btn primary" id="submitBtn">배차 등록</button>
-          <button type="button" class="btn ghost" id="cancelEdit" hidden>수정 취소</button>
+          <div class="row2" id="editActions" hidden style="margin-top:6px"><button type="button" class="btn" id="cancelEdit">수정 취소</button><button type="button" class="btn danger" id="deleteEdit">이 배차 삭제</button></div>
         </fieldset>
         <div class="msg" id="msg" role="status"></div>
       </form>
@@ -757,10 +763,11 @@ table.wk{width:100%;min-width:700px;border-collapse:collapse;table-layout:fixed;
     editingId=null;
     $('multi').checked=false; $('multiToggle').hidden=false; updateMulti();
     $('formTitle').textContent='새 배차 등록'; $('submitBtn').textContent='배차 등록';
-    $('cancelEdit').hidden=true; $('fPurpose').value=''; $('aFlight').value='';
+    $('editActions').hidden=true; $('fPurpose').value=''; $('aFlight').value='';
     $('msg').className='msg';
   }
   $('cancelEdit').addEventListener('click', resetEdit);
+  $('deleteEdit').addEventListener('click', () => { if (editingId) removeBooking(editingId); });
 
   function startEdit(id){
     const b=bookings.find(x => x.id===id); if (!b || b._pending || !canModify(b)) return;
@@ -778,7 +785,7 @@ table.wk{width:100%;min-width:700px;border-collapse:collapse;table-layout:fixed;
     $('fPurpose').value=b.purpose||'';
     $('formTitle').textContent = isEdit ? '배차 수정' : '새 배차 등록';
     $('submitBtn').textContent = isEdit ? '수정 저장' : '배차 등록';
-    $('cancelEdit').hidden=!isEdit; $('msg').className='msg';
+    $('editActions').hidden=!isEdit; $('msg').className='msg';
     go('book');
   }
 
@@ -869,7 +876,7 @@ table.wk{width:100%;min-width:700px;border-collapse:collapse;table-layout:fixed;
     $('pastNote').hidden = !(me.isAdmin && mode==='day' && date < jktToday());
     $('timelineBox').hidden = mode!=='day';
     $('weekBox').hidden = mode!=='week';
-    $('cards').classList.toggle('narrow-only', mode==='week');   // wide screens use the week grid instead
+    $('cards').classList.toggle('narrow-only', mode!=='month');   // wide screens use the timeline / week grid instead
     if (mode==='week') renderWeek(date);
     else if (mode==='month') renderMonth(date);
     else renderDay(date);
@@ -883,17 +890,27 @@ table.wk{width:100%;min-width:700px;border-collapse:collapse;table-layout:fixed;
     $('cards').innerHTML = day.length ? day.map(cardHtml).join('')
       : `<p class="empty">${loaded ? (date < jktToday() ? '이 날짜에는 배차 기록이 없습니다.' : '이 날짜에는 배차가 없습니다.') : '불러오는 중…'}</p>`;
 
-    // Timeline (wide screens)
+    // Timeline (wide screens). Shows 06–22h, stretched when a booking falls outside, so bars have room for details.
+    const timed=day.filter(b => b.type!=='day');
+    const h0=Math.min(6, ...timed.map(b => Math.floor(b.start/60)));
+    const h1=Math.max(22, ...timed.map(b => Math.ceil(b.end/60)));
+    const from=h0*60, span=(h1-h0)*60, steps=(h1-h0)/2;
+    const pos=m => (Math.min(Math.max(m,from),from+span)-from)/span*100;
+    const grid=`background-image:repeating-linear-gradient(90deg,var(--line) 0 1px,transparent 1px calc(100% / ${steps}))`;
     let html=`<div class="tl-row head"><div class="tl-label"><small>차량</small></div><div class="tl-hours">${
-      [0,3,6,9,12,15,18,21,24].map(h => `<span style="left:${h/24*100}%">${h}시</span>`).join('')}</div></div>`;
+      Array.from({length:steps+1}, (_,k) => h0+k*2).map(h => `<span style="left:${(h-h0)/(h1-h0)*100}%">${h}시</span>`).join('')}</div></div>`;
     vehicles.filter(v => vOk(v.id,date) || day.some(b => b.vehicleId===v.id)).forEach(v => {
       const bars=day.filter(b => b.vehicleId===v.id).map(b => {
         const d=dById(b.driverId), u=uById(b.requesterId);
-        const title=`${timeText(b)} · ${d?d.name:'-'}${u?' · 사용자 '+u.name:''}${b.purpose?' · '+b.purpose:''}`;
-        return `<button type="button" class="bar ${esc(b.type)}" style="left:${b.start/1440*100}%;width:${(b.end-b.start)/1440*100}%" ${canModify(b) && !b._pending?`data-action="edit" data-id="${esc(b.id)}"`:''} title="${esc(title)}"><b>${esc(d?d.name:'-')}</b>${b.type==='time'?'':' '+typeLabel(b.type)}</button>`;
+        const memo=[b.type==='air' ? (b.flight ? '공항 '+b.flight : '공항') : '', b.purpose].filter(Boolean).join(' · ');
+        const title=`${timeText(b)} · 사용자 ${u?u.name:'-'} · 기사 ${d?d.name:'-'}${memo?' · '+memo:''}`;
+        const left=pos(b.start), width=pos(b.end)-left;
+        return `<button type="button" class="bar ${esc(b.type)}${b._pending?' pending':''}" style="left:${left}%;width:${width}%" ${canModify(b) && !b._pending?`data-action="edit" data-id="${esc(b.id)}"`:''} title="${esc(title)}">
+          <span><b>${timeText(b)}</b></span><span>${esc(u?u.name:'-')} <i>· ${esc(d?d.name:'-')}</i></span>${memo?`<span class="memo-l">${esc(memo)}</span>`:''}</button>`;
       }).join('');
-      html+=`<div class="tl-row"><div class="tl-label"><span class="plate">${esc(v.plate)}</span><small>${esc(v.model)}</small></div><div class="tl-track">${bars}</div></div>`;
+      html+=`<div class="tl-row${vOk(v.id,date)?'':' off'}"><div class="tl-label"><span class="plate">${esc(v.plate)}</span><small>${esc(v.model)}</small></div><div class="tl-track" style="${grid}">${bars}</div></div>`;
     });
+    if (!vehicles.length) html+='<p class="empty">등록된 차량이 없습니다.</p>';
     $('timeline').innerHTML=html;
   }
 
@@ -929,7 +946,7 @@ table.wk{width:100%;min-width:700px;border-collapse:collapse;table-layout:fixed;
         const time=b.type==='day' ? '종일' : `${fromMin(b.start)}–${fromMin(b.end)}`;
         const tip=`${time} · ${u?u.name:''} · ${dr?dr.name:''}${b.flight?' · '+b.flight:''}${b.purpose?' · '+b.purpose:''}`;
         return `<button type="button" class="wk-item ${esc(b.type)}${b._pending?' pending':''}" ${editable?`data-action="edit" data-id="${esc(b.id)}"`:''} title="${esc(tip)}">
-          <span class="t">${time}${b.type==='air'?' 공항':''}</span><span>${esc(u?u.name:'-')}</span><span class="muted">${esc(dr?dr.name:'-')}</span></button>`;
+          <span class="t">${time}${b.type==='air'?' 공항':''}</span><span>${esc(u?u.name:'-')}</span><span class="muted">${esc(dr?dr.name:'-')}</span>${b.flight||b.purpose?`<span class="wk-memo">${esc([b.flight,b.purpose].filter(Boolean).join(' · '))}</span>`:''}</button>`;
       }).join('')}</td>`;
     }).join('')}</tr>`).join('');
     $('weekGrid').innerHTML = head + `<tbody>${body || `<tr><td colspan="8" class="empty">표시할 차량이 없습니다.</td></tr>`}</tbody>`;
