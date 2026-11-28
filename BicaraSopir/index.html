@@ -67,6 +67,11 @@ section[hidden]{display:none}
 .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
 .chip{flex:none;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:8px 14px;font:inherit;font-size:.92rem;cursor:pointer}
 .chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);font-weight:700}
+.chiphead{margin-top:0}
+.mode{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px;margin:20px 0 14px}
+.mode button{font:inherit;font-weight:700;font-size:.95rem;border:none;border-radius:10px;padding:11px 8px;background:transparent;color:var(--muted);cursor:pointer}
+.mode button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.chip svg{width:16px;height:16px;vertical-align:-3px;margin-right:5px}
 .chip.add{border-style:dashed;color:var(--muted)}
 
 /* dropoff strip */
@@ -150,10 +155,16 @@ nav a.sosnav[aria-current="page"]{color:var(--sos)}
   <h1><a class="logo" href="https://khkimm-bit.github.io/SiapJakarta/" target="_blank" rel="noopener" aria-label="Siap Jakarta 열기 (새 창)"></a>SIAP Jalan<a class="hdrbtn sos" href="#sos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><path d="M12 7v4M12 13.5v.01"/></svg>긴급 위치</a></h1>
   <p class="sub">자카르타 출장자 이동 도우미. 문구를 누르면 왓츠앱이 열리고 인도네시아어 메시지가 채워져요. 왓츠앱에서 전송만 누르세요.</p>
 
-  <div class="chips" id="driverChips"></div>
+  <h2 class="chiphead">메시지 받을 기사</h2>
+  <div class="chips" id="driverChips" role="group" aria-label="메시지 받을 기사"></div>
+  <p class="hint" id="driverHint"></p>
 
+  <div class="mode" role="tablist" aria-label="보낼 메시지 종류">
+    <button role="tab" id="t-phrases" data-mode="phrases" aria-controls="m-phrases">자주 쓰는 문구</button>
+    <button role="tab" id="t-dest" data-mode="dest" aria-controls="m-dest">목적지 보내기</button>
+  </div>
 
-  <h2>목적지 보내기</h2>
+  <div id="m-dest" role="tabpanel" aria-labelledby="t-dest" hidden>
   <div class="panel">
     <label for="placeSel">저장된 장소</label>
     <select class="full" id="placeSel"></select>
@@ -177,9 +188,11 @@ nav a.sosnav[aria-current="page"]{color:var(--sos)}
       <button class="btn ghost sm" id="destSave">장소 저장</button>
     </div>
   </div>
+  </div>
 
-  <h2>자주 쓰는 문구</h2>
+  <div id="m-phrases" role="tabpanel" aria-labelledby="t-phrases">
   <div class="tickets" id="tickets"></div>
+  </div>
 </section>
 
 <!-- SOS -->
@@ -353,7 +366,10 @@ function updateTicket(id){
 
 /* ---------- driver tab ---------- */
 function renderChips(){
-  const c=S.drivers.map(d=>'<button class="chip" data-driver="'+d.id+'" aria-pressed="'+(d.id===S.active)+'">'+esc(d.name)+'</button>').join('');
+  const car='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h14M6 17l1.5-6h9L18 17"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/></svg>';
+  const c=S.drivers.map(d=>'<button class="chip" data-driver="'+d.id+'" aria-pressed="'+(d.id===S.active)+'">'+car+esc(d.name)+'</button>').join('');
+  const a=driver();
+  $('driverHint').textContent=a?'아래 메시지는 모두 '+a.name+' 기사(+'+norm(a.phone)+')에게 보내져요.':'먼저 기사를 추가하세요. 이름과 왓츠앱 번호만 있으면 돼요.';
   $('driverChips').innerHTML=c+'<a class="chip add" href="#contacts">+ 기사 추가</a>';
 }
 function renderPlaces(){
@@ -437,7 +453,14 @@ function route(){
 window.addEventListener('hashchange',route);
 
 /* ---------- events ---------- */
+function setMode(m){
+  if(m!=='dest')m='phrases';S.mode=m;save();
+  $('m-phrases').hidden=m!=='phrases';$('m-dest').hidden=m!=='dest';
+  document.querySelectorAll('[data-mode]').forEach(b=>{const on=b.dataset.mode===m;b.setAttribute('aria-selected',String(on));b.tabIndex=on?0:-1});
+}
 document.addEventListener('click',e=>{
+  const md=e.target.closest('[data-mode]');
+  if(md){setMode(md.dataset.mode);return}
   const chip=e.target.closest('[data-driver]');
   if(chip){S.active=chip.dataset.driver;save();renderDriverTab();return}
   if(e.target.closest('[data-locate]')){locate(p=>{here=p;renderTickets();renderSOS();toast('현재 위치를 확인했어요.')});return}
@@ -488,7 +511,7 @@ $('resetAll').addEventListener('click',()=>{
   S=clone(DEFAULTS);here=null;save();renderAll();toast('모든 데이터를 지웠어요.');
 });
 
-renderAll();route();
+renderAll();setMode(S.mode);route();
 })();
 </script>
 </body>
